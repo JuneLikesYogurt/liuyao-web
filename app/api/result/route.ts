@@ -1,6 +1,6 @@
-export const runtime = "nodejs";
+import { getBackendBaseUrl } from "@/lib/backend-base-url";
 
-const BASE_URL = "http://127.0.0.1:8080";
+export const runtime = "nodejs";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return Response.json({ error: "missing_liuyao_id" }, { status: 400 });
   }
 
-  const url = `${BASE_URL}/result?liuyao_id=${encodeURIComponent(id)}`;
+  const url = `${getBackendBaseUrl()}/result?liuyao_id=${encodeURIComponent(id)}`;
   const res = await fetch(url, { cache: "no-store" });
   const text = await res.text();
 

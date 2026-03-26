@@ -24,6 +24,14 @@ function HomePage() {
 
   const router = useRouter();
 
+  const requireAuth = () => {
+    if (!window.localStorage.getItem("token")) {
+      router.push("/login");
+      return false;
+    }
+    return true;
+  };
+
   const generateLines = (): LiuYaoLine[] =>
     Array.from({ length: 6 }, () => Math.floor(Math.random() * 4) as LiuYaoLine);
 
@@ -39,6 +47,7 @@ function HomePage() {
   };
 
   const handleCast = () => {
+    if (!requireAuth()) return;
     if (phase === "casting") return;
     const generated = generateLines();
     setLines(generated);
@@ -50,6 +59,7 @@ function HomePage() {
   };
 
   const handlePan = async () => {
+    if (!requireAuth()) return;
     if (!lines || lines.length !== 6 || submitting) return;
     try {
       setSubmitting(true);

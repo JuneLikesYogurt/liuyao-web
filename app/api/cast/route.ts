@@ -1,6 +1,6 @@
-export const runtime = "nodejs";
+import { getBackendBaseUrl } from "@/lib/backend-base-url";
 
-const BASE_URL = "http://127.0.0.1:8080";
+export const runtime = "nodejs";
 
 function parseIdFromText(text: string): number | null {
   const trimmed = text.trim();
@@ -25,12 +25,18 @@ export async function POST(req: Request) {
     result?: string;
   };
 
-  const url = new URL(BASE_URL);
+  const url = new URL(getBackendBaseUrl());
   url.searchParams.set("title", body.title ?? "");
   url.searchParams.set("date", body.date ?? "");
   url.searchParams.set("result", body.result ?? "");
 
-  const res = await fetch(url.toString(), { method: "POST" });
+  // Forward auth header (e.g. `Authorization: Bearer <token>`) to Spring.
+  // Frontend should pass it to this Next route; we proxy it to the backend.
+  const authHeader = req.headers.get("authorization");
+  const headers = new Headers();
+  if (authHeader) headers.set("Authorization", authHeader);
+
+  const res = await fetch(url.toString(), { method: "POST", headers });
   const text = await res.text();
 
   if (!res.ok) {
