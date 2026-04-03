@@ -67,8 +67,19 @@
 | 项目 | 说明 |
 |------|------|
 | 路径 | `GET /result/countYongshen` |
-| 参数 | `liuyao_id`、`yongshen`（爻位，与后端服务约定一致） |
+| 参数 | `liuyao_id`、`yongshen`（**爻位编号**，与后端 `SuanGuaService` 等约定一致：**初爻=1，上爻=6**） |
 | 返回 | `double` |
+
+**与排盘数据对齐**：`GuaInfo.shi` / `ying` 即为世爻、应爻所在爻位（同为 1～6）；`yao_liuqin[index]` 为第 `index+1` 爻之六亲。前端 **点选第 `k` 爻为用神** 时，传 **`yongshen = k`**（`k ∈ [1,6]`）。
+
+**前端实现意图（MVP）**（详见 [PRD.md](PRD.md) 与 [.cursor/plans/用神选择与交互.plan.md](.cursor/plans/用神选择与交互.plan.md)）：
+
+1. 结果页本卦六爻行可点击，选中后 **AlertDialog 确认**，再请求本接口（或后续扩展的解读类接口）。
+2. 用神计算结果展示在 **卦盘区块下方**，不替代排盘 grid 主视觉。
+
+**Next 代理**：若从浏览器客户端调用，需经 `app/api/...` 同源代理到后端（与 `GET /result` 同理），避免 CORS；具体路径实现时与 `app/api/result/route.ts` 模式对齐。
+
+**未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PRD/architecture 先占位一句。
 
 ### 历史列表
 
@@ -105,7 +116,7 @@ lib/                 # api 封装、utils
 | 模块 | 路径 | 职责 |
 |------|------|------|
 | 起卦与提交 | `app/page.tsx` | 摇卦状态机、`castLiuYao` |
-| 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI |
+| 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；**规划中**：爻位点选用神、确认、调用用神接口、下方结果区 |
 | API 代理 | `app/api/cast/route.ts` 等 | 转发到 Spring，**转发 Authorization** |
 | HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`getLiuYaoDetail`、类型定义 |
 
@@ -116,13 +127,18 @@ lib/                 # api 封装、utils
 ### TypeScript 类型（`lib/api.ts`）
 
 - **`LiuYaoDetail`**：`liuyao_id`、`title`、`date`、`bengua` / `biangua`（`GuaInfo`）、`mingdong`、`year`…
-- **`GuaInfo`**：`gua_id`、`yao_zhi[]`、`yao_liuqin[]`、`shi` / `ying` 等
+- **`GuaInfo`**：`gua_id`、`yao_zhi[]`、`yao_liuqin[]`、可选 `yao_gan[]`（与 `yao_zhi` 同序；库表 `yao1_gan` 为初爻即索引 0）、`shi` / `ying` 等
+
+### 用神参数（约定）
+
+- **HTTP 参数名**：与现有后端一致时使用 `yongshen`（见 `GET /result/countYongshen`）。
+- **语义**：**爻位整数**，**1 = 初爻**，**6 = 上爻**；与 `shi`/`ying` 相同编号体系，与 UI 行 `index` 的关系为 **`yongshen = index + 1`**（`yao_zhi` / `yao_liuqin` 使用 `index ∈ [0,5]`）。
 
 ### `gua_id` 与并行数组（避免画错卦）
 
 - **`gua_id`**：六位阴阳串，**索引 0 = 上爻，索引 5 = 初爻**（自上而下）。
-- **`yao_zhi` / `yao_liuqin` / `bengua_liushou_by_yao`**：**索引 0 = 初爻，索引 5 = 上爻**（与 `gua_id` 字符顺序相反）。
-- **前端**：用同一套行 `index`（如 `index = 5 - i` 表示从上往下第几行）驱动六亲、地支、六兽时，对 **`gua_id` 取字符** 使用 **`guaId[5 - index]`**（或等价形式），与 `components/result/ben-gua-detail.tsx` 实现一致。
+- **`yao_zhi` / `yao_liuqin` / `yao_gan` / `bengua_liushou_by_yao`**：**索引 0 = 初爻，索引 5 = 上爻**（与 `gua_id` 字符顺序相反）。
+- **前端**：用同一套行 `index`（如 `index = 5 - i` 表示从上往下第几行）驱动六亲、地支、天干、六兽时，对 **`gua_id` 取字符** 使用 **`guaId[5 - index]`**（或等价形式），与 `components/result/ben-gua-detail.tsx` 实现一致。
 
 ### 首页摇卦线 `LiuYaoLine`
 
@@ -139,6 +155,7 @@ lib/                 # api 封装、utils
 1. **起卦走 `/api/cast` 代理**：同源请求，由 Route 转发并附加鉴权头。
 2. **结果页**：当前多为 Server Component 直连 `GET /result`；可改为统一走 `/api/result` 以便环境与错误处理一致。
 3. **排盘 UI**：使用 **grid** 保证六爻列对齐（见 `UI.mdc`）。
+4. **用神**：用户输入落在 **爻位**；确认后再请求；结果区在排盘之下。未来 **干支试算、图表** 放在折叠高级区与结果区扩展，不替换六爻 grid（见 PRD）。
 
 ---
 
