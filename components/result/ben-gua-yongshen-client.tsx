@@ -37,10 +37,33 @@ export function BenGuaYongShenClient({
 }) {
   const [selectedYao, setSelectedYao] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  /** 当前结果区对应的用神爻位（确认后写入，用于标题「以 xx 爻为用神的计算结果」） */
+  const [outcomeYao, setOutcomeYao] = useState<number | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
-  const [calcResult, setCalcResult] = useState<string | null>(null);
+  const [countValue, setCountValue] = useState<number | null>(null);
   const confirmSubmitLock = useRef(false);
+
+  const liuqinForYao = (yaoPos: number) =>
+    benLines.find((r) => r.yaoPos === yaoPos)?.liuqin ?? "—";
+
+  const runCountYongshen = async (yao: number) => {
+    if (confirmSubmitLock.current) return;
+    confirmSubmitLock.current = true;
+    setOutcomeYao(yao);
+    setCalcError(null);
+    setCountValue(null);
+    setCalcLoading(true);
+    try {
+      const value = await fetchCountYongshen({ liuyaoId, yongshen: yao });
+      setCountValue(value);
+    } catch (e) {
+      setCalcError(e instanceof Error ? e.message : "计算失败");
+    } finally {
+      setCalcLoading(false);
+      confirmSubmitLock.current = false;
+    }
+  };
 
   const handleBenYaoClick = (yaoPos: number) => {
     setSelectedYao(yaoPos);
@@ -53,28 +76,25 @@ export function BenGuaYongShenClient({
   };
 
   const handleConfirmOk = async () => {
-    if (selectedYao == null || confirmSubmitLock.current) return;
-    confirmSubmitLock.current = true;
-    const yao = selectedYao;
+    if (selectedYao == null) return;
     setConfirmOpen(false);
-    setCalcError(null);
-    setCalcResult(null);
-    setCalcLoading(true);
-    try {
-      const value = await fetchCountYongshen({ liuyaoId, yongshen: yao });
-      setCalcResult(`用神计数：${value}`);
-    } catch (e) {
-      setCalcError(e instanceof Error ? e.message : "计算失败");
-    } finally {
-      setCalcLoading(false);
-      confirmSubmitLock.current = false;
-    }
+    await runCountYongshen(selectedYao);
+  };
+
+  const handleRetry = () => {
+    if (outcomeYao == null) return;
+    void runCountYongshen(outcomeYao);
   };
 
   const dialogLiuqin =
-    selectedYao != null
-      ? benLines.find((r) => r.yaoPos === selectedYao)?.liuqin ?? "—"
-      : "—";
+    selectedYao != null ? liuqinForYao(selectedYao) : "—";
+
+  const headingMain =
+    outcomeYao != null
+      ? `以${yaoWeiLabel(outcomeYao)}为用神的计算结果`
+      : "用神结果";
+  const headingSub =
+    outcomeYao != null ? `· ${liuqinForYao(outcomeYao)}` : null;
 
   return (
     <>
@@ -84,7 +104,7 @@ export function BenGuaYongShenClient({
       >
         <p className="mb-3 text-[11px] text-muted-foreground">
           点选<strong className="text-foreground">本卦</strong>
-          某一爻作为用神，确认后在下方展示用神计数（需后端服务可用）。
+          某一爻作为用神，确认后在下方展示用神计数（需后端服务可用）。换用神请点选其他爻后再次确认。
         </p>
         <div className="flex min-w-[min(100%,42rem)] items-start gap-2 sm:gap-3">
           <LiuShouColumn labels={liushouLabels} />
@@ -111,19 +131,47 @@ export function BenGuaYongShenClient({
 
       <section
         className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground"
-        aria-label="用神结果"
+        aria-busy={calcLoading}
+        aria-live="polite"
+        aria-label={outcomeYao != null ? headingMain : "用神结果"}
       >
-        <div className="text-[11px] font-medium text-foreground">用神结果</div>
-        <p className="mt-2 text-xs leading-relaxed">
-          {calcLoading ? (
-            "计算中…"
-          ) : calcError ? (
-            <span className="text-destructive">{calcError}</span>
-          ) : (
-            calcResult ??
-            "请先在本卦中点选一爻；确认用神后，此处将展示计算结果。"
+        <div>
+          <div className="text-[11px] font-medium text-foreground">
+            {headingMain}
+          </div>
+          {headingSub && (
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {headingSub}
+            </div>
           )}
-        </p>
+        </div>
+
+        <div className="mt-2 text-xs leading-relaxed">
+          {calcLoading ? (
+            <p className="text-muted-foreground">请求中…</p>
+          ) : calcError ? (
+            <div className="space-y-2">
+              <p className="text-destructive">{calcError}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={handleRetry}
+              >
+                重试
+              </Button>
+            </div>
+          ) : countValue != null ? (
+            <p className="text-foreground">
+              用神计数：<span className="tabular-nums">{countValue}</span>
+            </p>
+          ) : (
+            <p>
+              请先在本卦中点选一爻，确认后此处将展示计算结果。
+            </p>
+          )}
+        </div>
       </section>
 
       {confirmOpen && selectedYao != null && (

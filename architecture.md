@@ -79,6 +79,8 @@
 
 **Next 代理**：浏览器经 **`GET /api/result/count-yongshen?liuyao_id=&yongshen=`**（[`app/api/result/count-yongshen/route.ts`](app/api/result/count-yongshen/route.ts)）转发至后端 `GET /result/countYongshen`，响应统一为 JSON `{ value: number }`，与 `GET /result` 同理避免 CORS。
 
+**后端持久化（与 liuyao_back 对齐）**：同一 `liuyao_id`、同一 `yongshen` 若库中已有已存计数，服务端可**直接返回已存结果**而不重复计算（便于历史与存档）；前端不依赖「是否命中缓存」类字段即可。
+
 **未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PRD/architecture 先占位一句。
 
 ### 历史列表
