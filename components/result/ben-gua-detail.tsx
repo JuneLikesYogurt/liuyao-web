@@ -1,7 +1,6 @@
+import { BenGuaYongShenClient } from "@/components/result/ben-gua-yongshen-client";
 import type { GuaInfo, LiuYaoDetail } from "@/lib/api";
-import { GuaModule, type GuaYaoRow } from "@/components/result/gua-module";
-import { LiuShouColumn } from "@/components/result/liu-shou-column";
-import { MovingColumn } from "@/components/result/moving-column";
+import type { GuaYaoRow } from "@/components/result/gua-module";
 
 function buildGuaYaoRows(
   gua: GuaInfo | null,
@@ -16,6 +15,7 @@ function buildGuaYaoRows(
     const isYang =
       kind === "ben" ? yy === "1" : yy === "1" || yy === "a";
     const dizhi = gua?.yao_zhi?.[index] ?? "—";
+    const gan = (gua?.yao_gan?.[index] ?? "—").replace(/\r/g, "");
     const liuqin = (gua?.yao_liuqin?.[index] ?? "—").replace(/\r/g, "");
     const isShi = gua?.shi === yaoPos;
     const isYing = gua?.ying === yaoPos;
@@ -24,7 +24,7 @@ function buildGuaYaoRows(
       : isYing
         ? "应"
         : "";
-    return { liuqin, dizhi, yang: isYang, shiYing };
+    return { liuqin, dizhi, gan, yang: isYang, shiYing, yaoPos };
   });
 }
 
@@ -36,11 +36,13 @@ function buildLiushouLabels(detail: LiuYaoDetail): string[] {
 }
 
 export function BenGuaDetailContent({
+  liuyaoId,
   detail,
   moving,
   benguaGuaId,
   bianguaGuaId
 }: {
+  liuyaoId: string;
   detail: LiuYaoDetail;
   moving: number[];
   benguaGuaId: string;
@@ -68,25 +70,15 @@ export function BenGuaDetailContent({
   });
 
   return (
-    <section className="overflow-x-auto rounded-xl bg-white/90 p-4 shadow-sm sm:p-5">
-      <div className="flex min-w-[min(100%,42rem)] items-start gap-2 sm:gap-3">
-        <LiuShouColumn labels={liushouLabels} />
-        <GuaModule
-          name={detail.bengua?.name ?? "—"}
-          lines={benLines}
-          variant="ben"
-        />
-        {hasBian && (
-          <>
-            <MovingColumn rows={movingRows} />
-            <GuaModule
-              name={detail.biangua?.name ?? "—"}
-              lines={bianLines}
-              variant="bian"
-            />
-          </>
-        )}
-      </div>
-    </section>
+    <BenGuaYongShenClient
+      liuyaoId={liuyaoId}
+      liushouLabels={liushouLabels}
+      benLines={benLines}
+      bianLines={bianLines}
+      hasBian={hasBian}
+      movingRows={movingRows}
+      benName={detail.bengua?.name ?? "—"}
+      bianName={detail.biangua?.name ?? "—"}
+    />
   );
 }

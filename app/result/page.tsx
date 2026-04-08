@@ -104,6 +104,7 @@ async function ResultPage({ searchParams }: ResultPageProps) {
 
           {detail.bengua && (
             <BenGuaDetailContent
+              liuyaoId={String(liuyaoId)}
               detail={detail}
               moving={moving}
               benguaGuaId={benguaGuaId}
