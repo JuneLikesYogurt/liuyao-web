@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { GuaYaoRow } from "@/components/result/gua-module";
 import { GuaModule } from "@/components/result/gua-module";
 import { LiuShouColumn } from "@/components/result/liu-shou-column";
 import { MovingColumn } from "@/components/result/moving-column";
 import { Button } from "@/components/ui/button";
+import { fetchCountYongshen } from "@/lib/api";
 import { yaoWeiLabel } from "@/lib/yao-wei";
 
 type MovingRow = {
@@ -39,6 +40,7 @@ export function BenGuaYongShenClient({
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
   const [calcResult, setCalcResult] = useState<string | null>(null);
+  const confirmSubmitLock = useRef(false);
 
   const handleBenYaoClick = (yaoPos: number) => {
     setSelectedYao(yaoPos);
@@ -50,13 +52,23 @@ export function BenGuaYongShenClient({
     setSelectedYao(null);
   };
 
-  const handleConfirmOk = () => {
+  const handleConfirmOk = async () => {
+    if (selectedYao == null || confirmSubmitLock.current) return;
+    confirmSubmitLock.current = true;
+    const yao = selectedYao;
     setConfirmOpen(false);
-    setCalcLoading(false);
     setCalcError(null);
-    setCalcResult(
-      "已确认用神（计算接口尚未接入，后续将在此展示后端返回结果）。"
-    );
+    setCalcResult(null);
+    setCalcLoading(true);
+    try {
+      const value = await fetchCountYongshen({ liuyaoId, yongshen: yao });
+      setCalcResult(`用神计数：${value}`);
+    } catch (e) {
+      setCalcError(e instanceof Error ? e.message : "计算失败");
+    } finally {
+      setCalcLoading(false);
+      confirmSubmitLock.current = false;
+    }
   };
 
   const dialogLiuqin =
@@ -72,7 +84,7 @@ export function BenGuaYongShenClient({
       >
         <p className="mb-3 text-[11px] text-muted-foreground">
           点选<strong className="text-foreground">本卦</strong>
-          某一爻作为用神，确认后将在下方展示结果（当前为交互预览）。
+          某一爻作为用神，确认后在下方展示用神计数（需后端服务可用）。
         </p>
         <div className="flex min-w-[min(100%,42rem)] items-start gap-2 sm:gap-3">
           <LiuShouColumn labels={liushouLabels} />
@@ -137,7 +149,11 @@ export function BenGuaYongShenClient({
               <Button type="button" variant="outline" onClick={handleConfirmCancel}>
                 取消
               </Button>
-              <Button type="button" onClick={handleConfirmOk}>
+              <Button
+                type="button"
+                disabled={calcLoading}
+                onClick={() => void handleConfirmOk()}
+              >
                 确认
               </Button>
             </div>

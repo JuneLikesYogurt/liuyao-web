@@ -77,7 +77,7 @@
 1. 结果页本卦六爻行可点击，选中后 **AlertDialog 确认**，再请求本接口（或后续扩展的解读类接口）。
 2. 用神计算结果展示在 **卦盘区块下方**，不替代排盘 grid 主视觉。
 
-**Next 代理**：若从浏览器客户端调用，需经 `app/api/...` 同源代理到后端（与 `GET /result` 同理），避免 CORS；具体路径实现时与 `app/api/result/route.ts` 模式对齐。
+**Next 代理**：浏览器经 **`GET /api/result/count-yongshen?liuyao_id=&yongshen=`**（[`app/api/result/count-yongshen/route.ts`](app/api/result/count-yongshen/route.ts)）转发至后端 `GET /result/countYongshen`，响应统一为 JSON `{ value: number }`，与 `GET /result` 同理避免 CORS。
 
 **未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PRD/architecture 先占位一句。
 
@@ -118,7 +118,7 @@ lib/                 # api 封装、utils
 | 起卦与提交 | `app/page.tsx` | 摇卦状态机、`castLiuYao` |
 | 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；**规划中**：爻位点选用神、确认、调用用神接口、下方结果区 |
 | API 代理 | `app/api/cast/route.ts` 等 | 转发到 Spring，**转发 Authorization** |
-| HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`getLiuYaoDetail`、类型定义 |
+| HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`fetchCountYongshen`、`getLiuYaoDetail`、类型定义 |
 
 ---
 
@@ -176,12 +176,13 @@ lib/                 # api 封装、utils
 - **首页 /** `app/page.tsx`：摇卦、可选标题、排盘、`LiuYao` 预览。
 - **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
 - **历史 /history** `app/history/page.tsx`：列表与后端对接随版本演进。
-- **API Route**：`app/api/cast/route.ts`、`app/api/result/route.ts`。
+- **API Route**：`app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
 
 ### 调用链摘要
 
 - 起卦：`castLiuYao` → `POST /api/cast` → 后端 `POST /?...`（带 Bearer）。
 - 结果：`getLiuYaoDetail` → `GET /result?liuyao_id=`（或经同源代理）。
+- 用神计数（浏览器）：`fetchCountYongshen` → `GET /api/result/count-yongshen?...` → 后端 `GET /result/countYongshen`。
 
 ### 已知改进方向（非阻塞）
 
