@@ -4,7 +4,7 @@
 
 | 严重度 | 主题 | 说明与位置 | 状态 |
 |--------|------|------------|------|
-| 高 | 仓库内明文敏感配置 | `application.yml` 曾含真实库密。**Git 历史中的密钥仍需在库外轮换**。现支持 **Jasypt**（`ENC(...)` + 仅 env 的 `JASYPT_ENCRYPTOR_PASSWORD`）；仓库默认仍为开发占位明文，生产见 `liuyao_back/README.md`。 | 部分处理：Jasypt + README；线上勿用默认 `JWT_SECRET` / 勿提交主口令 |
+| 高 | 仓库内明文敏感配置 | 敏感项仅 `ENC(...)`；解密主口令 **`JASYPT_ENCRYPTOR_PASSWORD` 仅环境变量**。Git 历史若曾含明文仍须库外轮换。 | 部分处理：统一 Jasypt；生产勿用 README 中的开发主口令 |
 | 高 | 调试接口暴露 | `GET /result/test` 匿名可调用并执行 `preCount`。`LiuYaoResultController` | **已处理**：已删除该映射 |
 | 高 | Actuator 全开放 | `SecurityConfig` 中 `/actuator/**` `permitAll` + `pom` 引入 actuator，生产可能暴露管理端点。 | 未处理 |
 | 高 / 产品 | 排盘详情 IDOR | `GET /result?liuyao_id=` 无需登录即可读任意记录（含 `title` 等）。与「仅本人可见」假设可能冲突。 | 未处理：需产品决策后改鉴权或改文档 |
@@ -19,11 +19,8 @@
 
 ## 环境变量（后端）
 
-**推荐约定（与 `liuyao_back/README.md` 一致，避免双源）：**
-
-- **本机**：可不设任何变量，使用 `application.yml` 开发默认值；或用 **不入库** 的 `application-local.yml`（见后端 `.gitignore`）覆盖明文。
-- **生产（明文路径）**：设置 `DATASOURCE_URL`、`DATASOURCE_USERNAME`、`DATASOURCE_PASSWORD`、`JWT_SECRET`（及可选 `JWT_EXPIRATION_MS`），不在仓库写真实值。
-- **生产（Jasypt 路径）**：敏感字段写 `ENC(...)`；必须设置 **`JASYPT_ENCRYPTOR_PASSWORD`**（与加密时使用的主口令一致）；可不再对同一字段 export 明文。加密命令见后端 README。
+- **`JASYPT_ENCRYPTOR_PASSWORD`**：解密 `application.yml` 中所有 `ENC(...)`（开发与生产同一套；勿提交仓库）。
+- 无其它「明文 export 数据源」路径；改密文请 `encrypt-value` 后替换 yml。
 
 ## 修订记录
 
@@ -32,3 +29,4 @@
 | 2026-05-13 | 初稿；关闭 `/result/test`；`application.yml` 改为环境变量 |
 | 2026-05-13 | 为 DATASOURCE_* / JWT_SECRET 增加本机开发默认值，避免未 export 时占位符无法解析导致启动失败 |
 | 2026-05-13 | 后端引入 Jasypt（`jasypt-spring-boot-starter` 3.0.5）、测试用 `jasypt.encryptor.password`、`.gitignore` 增加 `application-local.yml`；对照表与环境变量小节同步 |
+| 2026-05-13 | 开发与生产统一为 ENC + `JASYPT_ENCRYPTOR_PASSWORD`；移除 `application-local` 与 README 双路径；精简 findings |
