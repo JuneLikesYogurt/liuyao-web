@@ -1,1 +1,10 @@
 node_modules
+
+# Next.js build output（本地/CI 生成，勿提交）
+.next/
+
+# TypeScript 增量编译缓存
+*.tsbuildinfo
+
+# macOS
+.DS_Store
