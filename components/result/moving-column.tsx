@@ -45,29 +45,3 @@ export function MovingChangeIndicator({
     </span>
   );
 }
-
-export function MovingColumn({
-  rows
-}: {
-  rows: { isMoving: boolean; benguaIsYang: boolean; showArrow: boolean }[];
-}) {
-  return (
-    <div className="w-12 shrink-0 sm:w-14">
-      <div className="min-h-[2.5rem]" aria-hidden />
-      <div className="flex flex-col gap-1">
-        {rows.map((r, i) => (
-          <div
-            key={i}
-            className="flex min-h-[1.5rem] items-center justify-center"
-          >
-            <MovingChangeIndicator
-              isMoving={r.isMoving}
-              benguaIsYang={r.benguaIsYang}
-              showArrow={r.showArrow}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -8,10 +8,11 @@
 
 | 文档 | 内容 |
 |------|------|
-| [PRD.md](PRD.md) | 产品定位、核心功能、用户流程 |
+| [README.md](README.md) | 项目简介、技术栈、本地运行、文档索引 |
+| [PROJECT.md](PROJECT.md) | 产品定位、核心功能、用户流程 |
 | [architecture.md](architecture.md) | 技术选型、目录与模块、**前后端接口与数据约定**、设计决策与附录 |
 
-**补充**：交互级规划见 [.cursor/plans/](.cursor/plans/)（如用神点选与确认流）；与后端对接备忘见 [草稿.md](草稿.md)（**非正式**，以 PRD/architecture 为准）。远期方法论与 144 地支网格图表规划见 [docs/](docs/)（`offline-evaluation-…`、`yongshen-dizhi-…`）。
+**补充**：交互级规划见 [.cursor/plans/](.cursor/plans/)（如用神点选与确认流）；与后端对接备忘见 [草稿.md](草稿.md)（**非正式**，以 PROJECT/architecture 为准）。远期方法论与 144 地支网格图表规划见 [docs/](docs/)（`offline-evaluation-…`、`yongshen-dizhi-…`）。
 
 编写约定见 `.cursor/rules/global_rules.md`（含「项目文档（补充）」）。
 
@@ -21,7 +22,7 @@
 |------|------|
 | 框架 | Next.js 15、React 18 |
 | 语言 | TypeScript |
-| 样式 | Tailwind CSS；布局约定见 `.cursor/rules/UI.mdc` |
+| 样式 | Tailwind CSS；布局约定见 `.cursor/rules/UI.md` |
 | UI 组件 | 部分 shadcn/ui；业务组件见 `components/` |
 
 ## 本地运行方式

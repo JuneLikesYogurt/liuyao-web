@@ -2,7 +2,7 @@
 
 与代码同步更新（见 `.cursor/rules/global_rules.md`「项目文档（补充）」）。
 
-**关联文档**：[README.md](README.md) · [PRD.md](PRD.md)
+**关联文档**：[README.md](README.md) · [PROJECT.md](PROJECT.md)
 
 ---
 
@@ -12,7 +12,7 @@
 |------|------|------|
 | Next.js 15 App Router | 全栈 React | 服务端取数、API Route 代理、同源减轻 CORS |
 | TypeScript | 类型约束 | 与 `lib/api.ts` 中类型对齐 |
-| Tailwind CSS | 样式 | 与 `.cursor/rules/UI.mdc` 配合 |
+| Tailwind CSS | 样式 | 与 `.cursor/rules/UI.md` 配合 |
 | shadcn/ui | 基础 UI | Button、Card 等 |
 
 **后端**：开发期默认 **`http://127.0.0.1:8080`**（Spring Boot）；生产环境用环境变量配置 Base URL，避免硬编码。
@@ -72,7 +72,7 @@
 
 **与排盘数据对齐**：`GuaInfo.shi` / `ying` 即为世爻、应爻所在爻位（同为 1～6）；`yao_liuqin[index]` 为第 `index+1` 爻之六亲。前端 **点选第 `k` 爻为用神** 时，传 **`yongshen = k`**（`k ∈ [1,6]`）。
 
-**前端实现意图（MVP）**（详见 [PRD.md](PRD.md) 与 [.cursor/plans/用神选择与交互.plan.md](.cursor/plans/用神选择与交互.plan.md)）：
+**前端实现意图（MVP）**（详见 [PROJECT.md](PROJECT.md) ）：
 
 1. 结果页本卦六爻行可点击，选中后 **AlertDialog 确认**，再请求本接口（或后续扩展的解读类接口）。
 2. 用神计算结果展示在 **卦盘区块下方**，不替代排盘 grid 主视觉。
@@ -81,7 +81,7 @@
 
 **后端持久化（与 liuyao_back 对齐）**：同一 `liuyao_id`、同一 `yongshen` 若库中已有已存计数，服务端可**直接返回已存结果**而不重复计算（便于历史与存档）；前端不依赖「是否命中缓存」类字段即可。
 
-**未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PRD/architecture 先占位一句。
+**未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PROJECT.md / architecture 先占位一句。
 
 ### 历史列表
 
@@ -98,6 +98,13 @@
 - 请求头：`Authorization: Bearer <token>`
 - 前端需在登录成功后保存 token，并在 **起卦、历史** 等受保护请求中携带。
 
+### 前端会话与路由守卫（Next.js）
+
+- **登录页** [`/login`](app/login/page.tsx)、**注册页** [`/register`](app/register/page.tsx) 与 **`/api/auth/*`** 匿名可访问；其余页面默认需已登录（由根目录 [`middleware.ts`](middleware.ts) 拦截）。
+- 未登录访问受保护路径时重定向到 **`/login?next=<原路径+查询串>`**；登录成功后客户端写入 **`localStorage`**（兼容既有 `fetch`）并写入同名 **`token` cookie**（`path=/`，供 middleware 识别）。
+- **`next` 回跳**：仅允许站内相对路径（以 `/` 开头且非 `//`），避免开放重定向。
+- 已携带有效 **`token` cookie** 时访问 **`/login`**：重定向到 **`next`**（若合法）或 **`/`**，避免重复停留在登录页。
+
 ---
 
 ## 项目结构（目录）
@@ -108,7 +115,7 @@ app/                 # 页面与路由（App Router）
   history/result/... # 各路由 page.tsx
 components/          # 业务组件（liuyao、result/*）
 lib/                 # api 封装、utils
-.cursor/rules/      # Cursor 规则（含 global_rules.md、UI.mdc）
+.cursor/rules/      # Cursor 规则（含 global_rules.md、UI.md）
 ```
 
 ---
@@ -129,7 +136,7 @@ lib/                 # api 封装、utils
 ### TypeScript 类型（`lib/api.ts`）
 
 - **`LiuYaoDetail`**：`liuyao_id`、`title`、`date`、`bengua` / `biangua`（`GuaInfo`）、`mingdong`、`year`…
-- **`GuaInfo`**：`gua_id`、`yao_zhi[]`、`yao_liuqin[]`、可选 `yao_gan[]`（与 `yao_zhi` 同序；库表 `yao1_gan` 为初爻即索引 0）、`shi` / `ying` 等
+- **`GuaInfo`**：`gua_id`、`yao_zhi[]`、`yao_liuqin[]`、可选 `yao_gan[]`（与 `yao_zhi` 同序；库表 `yao1_gan` 为初爻即索引 0）、可选 **`yao_zhi_fu[]` / `yao_liuqin_fu[]`**（伏神地支/六亲，与 `yao_zhi` 同下标；库表 `yao1_*_fu` 为初爻）、`shi` / `ying` 等
 
 ### 用神参数（约定）
 
@@ -139,8 +146,8 @@ lib/                 # api 封装、utils
 ### `gua_id` 与并行数组（避免画错卦）
 
 - **`gua_id`**：六位阴阳串，**索引 0 = 上爻，索引 5 = 初爻**（自上而下）。
-- **`yao_zhi` / `yao_liuqin` / `yao_gan` / `bengua_liushou_by_yao`**：**索引 0 = 初爻，索引 5 = 上爻**（与 `gua_id` 字符顺序相反）。
-- **前端**：用同一套行 `index`（如 `index = 5 - i` 表示从上往下第几行）驱动六亲、地支、天干、六兽时，对 **`gua_id` 取字符** 使用 **`guaId[5 - index]`**（或等价形式），与 `components/result/ben-gua-detail.tsx` 实现一致。
+- **`yao_zhi` / `yao_liuqin` / `yao_gan` / `yao_zhi_fu` / `yao_liuqin_fu` / `bengua_liushou_by_yao`**：**索引 0 = 初爻，索引 5 = 上爻**（与 `gua_id` 字符顺序相反）。
+- **前端**：用同一套行 `index`（如 `index = 5 - i` 表示从上往下第几行）驱动六亲、地支、天干、伏神、六兽时，对 **`gua_id` 取字符** 使用 **`guaId[5 - index]`**（或等价形式），与 `components/result/ben-gua-detail.tsx` 实现一致。伏神在结果排盘中以 **爻主行下方** 副行展示（`components/result/gua-module.tsx` 的 `GuaYaoRowView`），文案由六亲伏、地支伏拼成「伏 …」，**红色**（`text-red-600`）。排盘区由 **`components/result/result-pan-grid.tsx`** 用 **CSS Grid** 整盘对齐（列：六兽 / 本卦 / 动爻 / 变卦；每爻一行），符合 `.cursor/rules/UI.md`。并行数组在渲染前经 **`lib/result-pan-zip.ts`** 的 `zipPanYaoRows` 合并为六行视图模型（长度契约由 Vitest 覆盖）；`GuaYaoRowView` 在 Grid 内使用 **`fushenSlotReserved`**，无伏神也保留副行高度，与侧列对齐。
 
 ### 首页摇卦线 `LiuYaoLine`
 
@@ -156,8 +163,9 @@ lib/                 # api 封装、utils
 
 1. **起卦走 `/api/cast` 代理**：同源请求，由 Route 转发并附加鉴权头。
 2. **结果页**：当前多为 Server Component 直连 `GET /result`；可改为统一走 `/api/result` 以便环境与错误处理一致。
-3. **排盘 UI**：使用 **grid** 保证六爻列对齐（见 `UI.mdc`）。
-4. **用神**：用户输入落在 **爻位**；确认后再请求；结果区在排盘之下。未来 **干支试算、图表** 放在折叠高级区与结果区扩展，不替换六爻 grid（见 PRD）。
+3. **排盘 UI**：使用 **grid** 保证六爻列对齐（见 `UI.md`）。
+4. **用神**：用户输入落在 **爻位**；确认后再请求；结果区在排盘之下。未来 **干支试算、图表** 放在折叠高级区与结果区扩展，不替换六爻 grid（见 [PROJECT.md](PROJECT.md)）。
+5. **登录前置**：全站（除登录、注册、认证 API 等白名单）由 middleware 要求会话；与 [PROJECT.md](PROJECT.md)「先登录再使用主流程」一致。
 
 ---
 
@@ -165,6 +173,16 @@ lib/                 # api 封装、utils
 
 - 使用 **`API_BASE_URL` / `NEXT_PUBLIC_API_BASE_URL`** 等环境变量替换硬编码 `127.0.0.1:8080`。
 - 历史分页：解析 Spring `Page` 的 `content` 数组。
+- **单元测试**：`npm test` 运行 Vitest（`vitest.config.ts`）；当前覆盖 `lib/result-pan-zip.ts` 等纯逻辑。
+
+### 结果排盘 Grid（手测清单）
+
+- **无变卦**：仅两列，卦名行与六爻不错行；有伏神时本卦副行与六兽第二占位行对齐。
+- **有变卦**：四列，动爻符号与箭头、变卦爻与侧列对齐。
+- **用神**：点本卦爻打开确认框；键盘 Enter / Space 可激活可点爻块（`GuaYaoRowView`）。
+- **主行齐平**：扫视六兽、本卦、动爻、变卦主行，垂直中心无明显高低台阶（本卦可点态无额外竖直 padding）。
+- **伏神贴缝**：爻行间以 `gap-y-px` 与主–伏 `gap-0` 为主，伏神紧贴主行下方。
+- **伏神文案**：六亲伏与地支伏之间含空格（`ben-gua-detail.tsx` 的 `fushenDisplayText`）。
 
 ---
 
@@ -175,6 +193,9 @@ lib/                 # api 封装、utils
 ### 页面概览
 
 - **布局** `app/layout.tsx`：全局样式、顶栏导航、页脚。
+- **路由守卫** `middleware.ts`：未登录重定向登录；已登录访问 `/login` 时离开登录页。
+- **登录 /login** `app/login/page.tsx`：鉴权、token 落盘与回跳。
+- **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
 - **首页 /** `app/page.tsx`：摇卦、可选标题、排盘、`LiuYao` 预览。
 - **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
 - **历史 /history** `app/history/page.tsx`：列表与后端对接随版本演进。

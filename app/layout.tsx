@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+import { AuthHeader } from "@/components/auth-header";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -36,21 +37,24 @@ function RootLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
 
-              <nav className="flex items-center gap-1 rounded-full border bg-card px-1 py-1 text-sm shadow-sm">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                      "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
-                    )}
-                    data-active={false}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <div className="flex items-center gap-3">
+                <nav className="flex items-center gap-1 rounded-full border bg-card px-1 py-1 text-sm shadow-sm">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                        "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
+                      )}
+                      data-active={false}
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+                <AuthHeader />
+              </div>
             </div>
           </header>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +13,6 @@ import {
 } from "@/components/ui/card";
 
 interface RegisterResponse {
-  token?: string;
-  tokenType?: string;
-  userId?: number;
   error?: string;
   message?: string;
 }
@@ -23,7 +21,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<RegisterResponse | null>(null);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -31,7 +29,7 @@ export default function RegisterPage() {
     if (loading) return;
 
     setLoading(true);
-    setResult(null);
+    setSuccess(false);
     setError(null);
 
     try {
@@ -52,7 +50,7 @@ export default function RegisterPage() {
         throw new Error(data.message || data.error || "注册失败");
       }
 
-      setResult(data);
+      setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "注册失败");
     } finally {
@@ -65,7 +63,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl">注册</CardTitle>
-          <CardDescription>最小注册表单：提交后展示后端返回 token。</CardDescription>
+          <CardDescription>创建账号后返回登录页继续使用。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -106,16 +104,22 @@ export default function RegisterPage() {
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "提交中..." : "注册"}
             </Button>
+            <Button type="button" variant="outline" className="w-full" asChild>
+              <Link href="/login">去登录</Link>
+            </Button>
           </form>
 
           {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-          {result && (
+          {success && (
             <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
               <p className="font-medium text-slate-800">注册成功</p>
-              <p className="mt-1 break-all text-slate-700">token: {result.token || "(空)"}</p>
-              <p className="mt-1 text-slate-600">tokenType: {result.tokenType || "-"}</p>
-              <p className="mt-1 text-slate-600">userId: {result.userId ?? "-"}</p>
+              <p className="mt-1 text-slate-700">请返回登录页完成登录。</p>
+              <div className="mt-3">
+                <Button type="button" size="sm" asChild>
+                  <Link href="/login">去登录</Link>
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

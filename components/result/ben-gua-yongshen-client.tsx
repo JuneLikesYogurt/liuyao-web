@@ -3,9 +3,7 @@
 import { useRef, useState } from "react";
 
 import type { GuaYaoRow } from "@/components/result/gua-module";
-import { GuaModule } from "@/components/result/gua-module";
-import { LiuShouColumn } from "@/components/result/liu-shou-column";
-import { MovingColumn } from "@/components/result/moving-column";
+import { ResultPanGrid } from "@/components/result/result-pan-grid";
 import { Button } from "@/components/ui/button";
 import { fetchCountYongshen } from "@/lib/api";
 import { yaoWeiLabel } from "@/lib/yao-wei";
@@ -106,27 +104,17 @@ export function BenGuaYongShenClient({
           点选<strong className="text-foreground">本卦</strong>
           某一爻作为用神，确认后在下方展示用神计数（需后端服务可用）。换用神请点选其他爻后再次确认。
         </p>
-        <div className="flex min-w-[min(100%,42rem)] items-start gap-2 sm:gap-3">
-          <LiuShouColumn labels={liushouLabels} />
-          <GuaModule
-            name={benName}
-            lines={benLines}
-            variant="ben"
-            selectableBen
-            selectedYao={selectedYao}
-            onBenYaoClick={handleBenYaoClick}
-          />
-          {hasBian && (
-            <>
-              <MovingColumn rows={movingRows} />
-              <GuaModule
-                name={bianName}
-                lines={bianLines}
-                variant="bian"
-              />
-            </>
-          )}
-        </div>
+        <ResultPanGrid
+          liushouLabels={liushouLabels}
+          benName={benName}
+          benLines={benLines}
+          hasBian={hasBian}
+          movingRows={movingRows}
+          bianName={bianName}
+          bianLines={bianLines}
+          selectedYao={selectedYao}
+          onBenYaoClick={handleBenYaoClick}
+        />
       </section>
 
       <section

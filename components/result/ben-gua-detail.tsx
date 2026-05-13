@@ -2,6 +2,15 @@ import { BenGuaYongShenClient } from "@/components/result/ben-gua-yongshen-clien
 import type { GuaInfo, LiuYaoDetail } from "@/lib/api";
 import type { GuaYaoRow } from "@/components/result/gua-module";
 
+function fushenDisplayText(gua: GuaInfo | null, index: number): string | undefined {
+  if (!gua) return undefined;
+  const lq = (gua.yao_liuqin_fu?.[index] ?? "").replace(/\r/g, "").trim();
+  const zh = (gua.yao_zhi_fu?.[index] ?? "").replace(/\r/g, "").trim();
+  if (!lq && !zh) return undefined;
+  const body = [lq, zh].filter(Boolean).join(" ");
+  return `伏 ${body}`;
+}
+
 function buildGuaYaoRows(
   gua: GuaInfo | null,
   guaId: string,
@@ -24,7 +33,8 @@ function buildGuaYaoRows(
       : isYing
         ? "应"
         : "";
-    return { liuqin, dizhi, gan, yang: isYang, shiYing, yaoPos };
+    const fushen = fushenDisplayText(gua, index);
+    return { liuqin, dizhi, gan, yang: isYang, shiYing, yaoPos, fushen };
   });
 }
 

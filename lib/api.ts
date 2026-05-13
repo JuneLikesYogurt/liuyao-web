@@ -102,6 +102,10 @@ export interface GuaInfo {
   yao_liuqin: string[];
   /** 六位天干，与 `yao_zhi` 同序；`yao1_gan` 为初爻即索引 0 */
   yao_gan?: string[];
+  /** 伏神地支，与 `yao_zhi` 同序；无伏神可为空串或缺省 */
+  yao_zhi_fu?: string[];
+  /** 伏神六亲，与 `yao_liuqin` 同序 */
+  yao_liuqin_fu?: string[];
 }
 
 export interface LiuYaoDetail {

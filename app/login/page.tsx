@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from "react";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -52,10 +54,18 @@ export default function LoginPage() {
         throw new Error("登录成功但未返回 token");
       }
 
-      // Stage 2 requirement: store token locally (simple first iteration).
+      // Keep localStorage for existing API calls that read token in browser.
       window.localStorage.setItem("token", data.token);
+      window.localStorage.setItem("user_label", identifier.trim());
+      // Also write cookie so middleware can guard routes.
+      document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
 
-      router.push("/");
+      const nextPath = searchParams.get("next");
+      if (nextPath && nextPath.startsWith("/")) {
+        router.push(nextPath);
+      } else {
+        router.push("/");
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败");
     } finally {
@@ -68,7 +78,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
         <CardHeader>
           <CardTitle className="text-xl">登录</CardTitle>
-          <CardDescription>输入账号密码后，成功写入 token 到 localStorage。</CardDescription>
+          <CardDescription>输入账号密码后完成登录并进入起卦页。</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -108,6 +118,9 @@ export default function LoginPage() {
 
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? "登录中..." : "登录"}
+            </Button>
+            <Button type="button" variant="outline" className="w-full" asChild>
+              <Link href="/register">去注册</Link>
             </Button>
           </form>
 
