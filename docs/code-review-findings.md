@@ -4,7 +4,7 @@
 
 | 严重度 | 主题 | 说明与位置 | 状态 |
 |--------|------|------------|------|
-| 高 | 仓库内明文敏感配置 | `liuyao_back/src/main/resources/application.yml` 曾含数据库账号密码、JWT 默认 secret。**Git 历史中的密钥仍需在库外轮换**（改文件不等于撤销泄露）。 | 部分处理：已改为仅环境变量注入，见同仓库 README「环境变量」 |
+| 高 | 仓库内明文敏感配置 | `application.yml` 曾含真实库密。**Git 历史中的密钥仍需在库外轮换**。当前为「环境变量优先 + 本机开发用占位默认值」，生产必须 `export` 覆盖。 | 部分处理：见 README；勿在线上使用默认 `JWT_SECRET` |
 | 高 | 调试接口暴露 | `GET /result/test` 匿名可调用并执行 `preCount`。`LiuYaoResultController` | **已处理**：已删除该映射 |
 | 高 | Actuator 全开放 | `SecurityConfig` 中 `/actuator/**` `permitAll` + `pom` 引入 actuator，生产可能暴露管理端点。 | 未处理 |
 | 高 / 产品 | 排盘详情 IDOR | `GET /result?liuyao_id=` 无需登录即可读任意记录（含 `title` 等）。与「仅本人可见」假设可能冲突。 | 未处理：需产品决策后改鉴权或改文档 |
@@ -17,18 +17,14 @@
 | 低 | 注释掉的 import | `LiuYaoResultController` 顶部注释 import。 | 未处理（可与上条一并整理） |
 | 低 | 安全相关自动化测试 | `/result` 鉴权、`/result/test` 不存在、代理错误体等。 | 未处理 |
 
-## 环境变量（后端脱敏后）
+## 环境变量（后端）
 
-本地或部署前需设置（示例见 `liuyao_back/README.md`）：
-
-- `DATASOURCE_URL` — JDBC URL，如 `jdbc:mysql://127.0.0.1:3306/liuyao`
-- `DATASOURCE_USERNAME`
-- `DATASOURCE_PASSWORD`
-- `JWT_SECRET` — 足够长的随机串（如 32+ 字节十六进制）
-- 可选：`JWT_EXPIRATION_MS`（默认 `86400000`）
+- **本机**：可不设变量，使用 `application.yml` 内开发默认值（与 README 一致）。
+- **生产**：必须设置 `DATASOURCE_URL`、`DATASOURCE_USERNAME`、`DATASOURCE_PASSWORD`、`JWT_SECRET`（及可选 `JWT_EXPIRATION_MS`），见 `liuyao_back/README.md`。
 
 ## 修订记录
 
 | 日期 | 变更 |
 |------|------|
 | 2026-05-13 | 初稿；关闭 `/result/test`；`application.yml` 改为环境变量 |
+| 2026-05-13 | 为 DATASOURCE_* / JWT_SECRET 增加本机开发默认值，避免未 export 时占位符无法解析导致启动失败 |
