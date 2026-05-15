@@ -2,7 +2,7 @@
 
 与代码同步更新（见 `.cursor/rules/global_rules.md`「项目文档（补充）」）。
 
-**关联文档**：[README.md](README.md) · [PROJECT.md](PROJECT.md)
+**关联文档**：[README.md](README.md) · [PROJECT.md](PROJECT.md) · 后端契约 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**
 
 ---
 
@@ -15,7 +15,7 @@
 | Tailwind CSS | 样式 | 与 `.cursor/rules/UI.md` 配合 |
 | shadcn/ui | 基础 UI | Button、Card 等 |
 
-**后端**：开发期默认 **`http://127.0.0.1:8080`**（Spring Boot）；生产环境用环境变量配置 Base URL，避免硬编码。
+**后端**：开发期默认 **`http://127.0.0.1:8080`**（Spring Boot）。**HTTP 路径、鉴权、响应字段与爻位约定** 以 **liuyao_back** 仓库 **[architecture.md](../liuyao_back/architecture.md)** 为准；生产 Base URL 由前端环境变量配置。
 
 ---
 
@@ -24,79 +24,23 @@
 | 组件 | 默认地址 | 说明 |
 |------|----------|------|
 | Next.js | `http://localhost:3000` | 浏览器只访问本站；部分请求经 **API Route** 代理到后端 |
-| Spring Boot | `http://127.0.0.1:8080` | 业务 API；`lib/api.ts`、`app/api/*/route.ts` 中需统一改为可配置地址 |
+| Spring Boot | `http://127.0.0.1:8080` | 业务 API；`lib/api.ts`、`app/api/*/route.ts` 中 Base URL 应可配置 |
 
 ---
 
-## 前后端接口约定（Spring Boot）
+## 后端 API 契约（索引）
 
-以下与后端 `SecurityConfig`、Controller 保持一致；若后端变更，**先改本文档再改代码**。
+以下与 **liuyao_back** 的 `SecurityConfig`、Controller 保持一致。变更时 **先改 [liuyao_back/architecture.md](../liuyao_back/architecture.md)，再改本仓库代理与类型**。
 
-### 认证（匿名可访问）
+| 能力 | 后端路径（摘要） | 前端侧 |
+|------|------------------|--------|
+| 注册 / 登录 | `POST /auth/register`、`POST /auth/login` | `/api/auth/*` 或直连 |
+| 起卦入库 | `POST /?title&date&result`（query，需 JWT） | `POST /api/cast` 转发并带 `Authorization` |
+| 卦象详情 | `GET /result?liuyao_id=` | `GET /api/result` 或 `getLiuYaoDetail` |
+| 用神计数 | `GET /result/countYongshen` | `GET /api/result/count-yongshen` → `{ value }` |
+| 历史 | `GET /history`（需 JWT） | `/api/history` |
 
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/auth/register` | POST | Body：`username`、`password`（长度等以后端校验为准）。成功返回 JWT |
-| `/auth/login` | POST | Body：`identifier` + `password`（`identifier` 为用户名或邮箱；兼容键名 `username`） |
-
-**成功响应 `AuthResponse`**：`token`（JWT）、`tokenType`（`"Bearer"`）、`userId`（整数）。  
-**错误**：`400` / `401`，body 形如 `{"error":"..."}`。  
-**登录规则（后端）**：`identifier` trim 后，含 `@` 则按邮箱查，否则按用户名；密码与 `password_hash` BCrypt 比对。
-
-### 起卦（排盘入库）
-
-| 项目 | 说明 |
-|------|------|
-| 路径 | `POST /?title=...&date=...&result=...`（**查询参数**，非 JSON body） |
-| 鉴权 | **需登录**：`Authorization: Bearer <token>` |
-| 行为 | 写入 `liuyao` 等，返回 **`liuyao_id`（整数）**；响应可能是纯数字或 JSON，前端代理需兼容解析 |
-| Principal | 后端从 JWT 得到 **`userId`** |
-
-**前端**：`app/api/cast/route.ts` 转发到后端时须 **附带客户端传来的 `Authorization`**，否则将 401。
-
-### 卦象详情
-
-| 项目 | 说明 |
-|------|------|
-| 路径 | `GET /result?liuyao_id=<id>` |
-| 鉴权 | **允许匿名**（与 `POST /`、`/history` 策略以后端配置为准） |
-| 响应 | JSON（本卦/变卦、空亡、动静、干支等），类型见下文「数据模型」 |
-
-### 用神计数（可选）
-
-| 项目 | 说明 |
-|------|------|
-| 路径 | `GET /result/countYongshen` |
-| 参数 | `liuyao_id`、`yongshen`（**爻位编号**，与后端 `SuanGuaService` 等约定一致：**初爻=1，上爻=6**） |
-| 返回 | `double` |
-
-**与排盘数据对齐**：`GuaInfo.shi` / `ying` 即为世爻、应爻所在爻位（同为 1～6）；`yao_liuqin[index]` 为第 `index+1` 爻之六亲。前端 **点选第 `k` 爻为用神** 时，传 **`yongshen = k`**（`k ∈ [1,6]`）。
-
-**前端实现意图（MVP）**（详见 [PROJECT.md](PROJECT.md) ）：
-
-1. 结果页本卦六爻行可点击，选中后 **AlertDialog 确认**，再请求本接口（或后续扩展的解读类接口）。
-2. 用神计算结果展示在 **卦盘区块下方**，不替代排盘 grid 主视觉。
-
-**Next 代理**：浏览器经 **`GET /api/result/count-yongshen?liuyao_id=&yongshen=`**（[`app/api/result/count-yongshen/route.ts`](app/api/result/count-yongshen/route.ts)）转发至后端 `GET /result/countYongshen`，响应统一为 JSON `{ value: number }`，与 `GET /result` 同理避免 CORS。
-
-**后端持久化（与 liuyao_back 对齐）**：同一 `liuyao_id`、同一 `yongshen` 若库中已有已存计数，服务端可**直接返回已存结果**而不重复计算（便于历史与存档）；前端不依赖「是否命中缓存」类字段即可。
-
-**未来（预留）**：同一卦、同一用神下，可能增加 **可选查询参数**（如月、日干支）以试算不同时间语境；定稿后补全上表并与后端同步。**未定时前端不得臆造字段名**，可在 PROJECT.md / architecture 先占位一句。
-
-### 历史列表
-
-| 项目 | 说明 |
-|------|------|
-| 路径 | `GET /history` |
-| 鉴权 | **需登录**（JWT） |
-| 参数 | `page`（默认 0）、`size`（默认 20，常见上限 100） |
-| 排序 | 按 `date` **降序** |
-| 响应 | Spring `Page` JSON（`content`、`totalElements` 等）；项含 `liuyao_id`、`title`、`date` 等 |
-
-### JWT 使用
-
-- 请求头：`Authorization: Bearer <token>`
-- 前端需在登录成功后保存 token，并在 **起卦、历史** 等受保护请求中携带。
+鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
 
 ### 前端会话与路由守卫（Next.js）
 
@@ -132,6 +76,8 @@ lib/                 # api 封装、utils
 ---
 
 ## 数据模型与爻位约定
+
+服务端 JSON 字段以 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)** 为准；下列为前端 `lib/api.ts` 与排盘 UI 对齐要点。
 
 ### TypeScript 类型（`lib/api.ts`）
 
