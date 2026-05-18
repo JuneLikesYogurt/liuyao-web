@@ -35,9 +35,9 @@
 | 能力 | 后端路径（摘要） | 前端侧 |
 |------|------------------|--------|
 | 注册 / 登录 | `POST /auth/register`、`POST /auth/login` | `/api/auth/*` 或直连 |
-| 起卦入库 | `POST /?title&date&result`（query，需 JWT） | `POST /api/cast` 转发并带 `Authorization` |
-| 卦象详情 | `GET /result?liuyao_id=` | `GET /api/result` 或 `getLiuYaoDetail` |
-| 用神计数 | `GET /result/countYongshen` | `GET /api/result/count-yongshen` → `{ value }` |
+| 起卦入库 | Spring：`POST /?title&date&result`（**仅 query**，需 JWT） | 浏览器：`POST /api/cast`，**JSON body** `{ title, date, result }`；Route 读 JSON 后拼 query 调 Spring；`Authorization` 透传（见 `castLiuYao` / `app/api/cast/route.ts`） |
+| 卦象详情 | `GET /result?liuyao_id=`（需 JWT，仅记录所属用户） | `GET /api/result`；Route 与 `getLiuYaoDetail` 转发 **`Authorization: Bearer`**（服务端由 **`token` cookie** 注入） |
+| 用神计数 | `GET /result/countYongshen`（需 JWT，仅记录所属用户） | `GET /api/result/count-yongshen` → `{ value }`；浏览器经 `fetchCountYongshen` 带 Bearer |
 | 历史 | `GET /history`（需 JWT） | `/api/history` |
 
 鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
@@ -48,6 +48,7 @@
 - 未登录访问受保护路径时重定向到 **`/login?next=<原路径+查询串>`**；登录成功后客户端写入 **`localStorage`**（兼容既有 `fetch`）并写入同名 **`token` cookie**（`path=/`，供 middleware 识别）。
 - **`next` 回跳**：仅允许站内相对路径（以 `/` 开头且非 `//`），避免开放重定向。
 - 已携带有效 **`token` cookie** 时访问 **`/login`**：重定向到 **`next`**（若合法）或 **`/`**，避免重复停留在登录页。
+- **Middleware 与 JWT（重要）**：[`middleware.ts`](middleware.ts) 仅对 Cookie 中的 JWT **解码 payload** 并校验 **`exp` 未过期**，**不验证签名**（Edge 层不持有 `jwt.secret`）。用途是 **路由/UX 门禁**（是否重定向到登录），**不是**身份认证的权威边界。**真实鉴权**在 **Spring**（`JwtAuthenticationFilter` + `JwtService` 验签）。因此可能出现「页面放行但接口 401」的短暂不一致；`/api/*` 不经页面式重定向拦截，由后端或 Route 返回 401。
 
 ---
 
@@ -70,8 +71,8 @@ lib/                 # api 封装、utils
 |------|------|------|
 | 起卦与提交 | `app/page.tsx` | 摇卦状态机、`castLiuYao` |
 | 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；**规划中**：爻位点选用神、确认、调用用神接口、下方结果区 |
-| API 代理 | `app/api/cast/route.ts` 等 | 转发到 Spring，**转发 Authorization** |
-| HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`fetchCountYongshen`、`getLiuYaoDetail`、类型定义 |
+| API 代理 | `app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts` 等 | 转发到 Spring，**转发 Authorization**；**错误体**经 [`lib/proxy-upstream-error.ts`](lib/proxy-upstream-error.ts) 脱敏（生产不附带上游原文，开发可带 `debugSnippet`） |
+| HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`fetchCountYongshen`（Bearer）、`getLiuYaoDetail`（cookie→Bearer）、类型定义 |
 
 ---
 
@@ -107,8 +108,8 @@ lib/                 # api 封装、utils
 
 ## 关键设计决策
 
-1. **起卦走 `/api/cast` 代理**：同源请求，由 Route 转发并附加鉴权头。
-2. **结果页**：当前多为 Server Component 直连 `GET /result`；可改为统一走 `/api/result` 以便环境与错误处理一致。
+1. **起卦走 `/api/cast` 代理**：浏览器用 **JSON** 调 Next；Next 调 Spring 时改为 **query 参数**（与后端 `YaoGuaController` 一致），并转发鉴权头。
+2. **结果页**：Server Component 经 **`getLiuYaoDetail` → 同源 `/api/result`**，与浏览器代理路径一致；鉴权由 **`token` cookie** 转 Bearer。
 3. **排盘 UI**：使用 **grid** 保证六爻列对齐（见 `UI.md`）。
 4. **用神**：用户输入落在 **爻位**；确认后再请求；结果区在排盘之下。未来 **干支试算、图表** 放在折叠高级区与结果区扩展，不替换六爻 grid（见 [PROJECT.md](PROJECT.md)）。
 5. **登录前置**：全站（除登录、注册、认证 API 等白名单）由 middleware 要求会话；与 [PROJECT.md](PROJECT.md)「先登录再使用主流程」一致。
@@ -149,11 +150,11 @@ lib/                 # api 封装、utils
 
 ### 调用链摘要
 
-- 起卦：`castLiuYao` → `POST /api/cast` → 后端 `POST /?...`（带 Bearer）。
-- 结果：`getLiuYaoDetail` → `GET /result?liuyao_id=`（或经同源代理）。
-- 用神计数（浏览器）：`fetchCountYongshen` → `GET /api/result/count-yongshen?...` → 后端 `GET /result/countYongshen`。
+- 起卦：`castLiuYao` → **`POST /api/cast`**（JSON body）→ **`POST /?...`**（query，带 Bearer）。
+- 结果：`getLiuYaoDetail` → **`GET /api/result?liuyao_id=`**（cookie `token` → `Authorization: Bearer`）→ 后端 `GET /result`。
+- 用神计数（浏览器）：`fetchCountYongshen`（localStorage `token` → Bearer）→ **`GET /api/result/count-yongshen`** → 后端 `GET /result/countYongshen`。
 
 ### 已知改进方向（非阻塞）
 
 - 结果 URL 可改为 `/result/[liuyao_id]`。
-- 导航高亮、统一 result 代理、环境变量、错误与 loading、历史项跳转详情。
+- 导航高亮、环境变量、错误与 loading、历史项跳转详情。

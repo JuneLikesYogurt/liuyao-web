@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+/** 路由守卫：仅根据 JWT payload 的 exp 判断「是否像已登录」，不解签；身份以 Spring 验签为准。 */
 function safeInternalNext(nextParam: string | null): string | null {
   if (!nextParam || !nextParam.startsWith("/") || nextParam.startsWith("//")) {
     return null;
@@ -24,6 +25,7 @@ function parseJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+/** UX 门禁：非安全边界；不校验 HMAC，与后端 JwtService 验签无关。 */
 function hasValidSessionToken(token: string | undefined): boolean {
   if (!token) return false;
   const payload = parseJwtPayload(token);

@@ -50,8 +50,14 @@ export async function fetchCountYongshen(params: {
     yongshen: String(yongshen)
   });
 
+  const token =
+    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+
   const res = await fetch(`/api/result/count-yongshen?${q.toString()}`, {
-    method: "GET"
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
   });
 
   const raw = await res.text();

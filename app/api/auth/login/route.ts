@@ -1,4 +1,8 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import {
+  proxyMalformedUpstreamBody,
+  sanitizeUpstreamErrorJson
+} from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
 
@@ -29,18 +33,20 @@ export async function POST(req: Request) {
 
   const text = await res.text();
 
+  let data: unknown;
   try {
-    const data = JSON.parse(text) as unknown;
-    return Response.json(data, { status: res.status });
+    data = text ? (JSON.parse(text) as unknown) : null;
   } catch {
+    return proxyMalformedUpstreamBody(text, "bad_login_response");
+  }
+
+  if (!res.ok) {
     return Response.json(
-      {
-        error: "bad_login_response",
-        status: res.status,
-        body: text
-      },
-      { status: 502 }
+      sanitizeUpstreamErrorJson(res.status, text, "bad_login_response"),
+      { status: res.status }
     );
   }
+
+  return Response.json(data, { status: res.status });
 }
 

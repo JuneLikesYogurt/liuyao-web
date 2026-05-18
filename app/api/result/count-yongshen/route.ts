@@ -1,4 +1,8 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import {
+  proxyMalformedUpstreamBody,
+  sanitizeUpstreamErrorJson
+} from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
 
@@ -19,22 +23,23 @@ export async function GET(req: Request) {
     id
   )}&yongshen=${encodeURIComponent(yongshen)}`;
 
-  const res = await fetch(url, { cache: "no-store" });
+  const authHeader = req.headers.get("authorization");
+  const headers = new Headers();
+  if (authHeader) headers.set("Authorization", authHeader);
+
+  const res = await fetch(url, { cache: "no-store", headers });
   const text = await res.text();
 
   if (!res.ok) {
     return Response.json(
-      { error: "count_yongshen_failed", status: res.status, body: text },
-      { status: 502 }
+      sanitizeUpstreamErrorJson(res.status, text, "count_yongshen_failed"),
+      { status: res.status }
     );
   }
 
   const value = parseCountYongshenBody(text);
   if (value === null) {
-    return Response.json(
-      { error: "bad_count_yongshen_response", body: text },
-      { status: 502 }
-    );
+    return proxyMalformedUpstreamBody(text, "bad_count_yongshen_response");
   }
 
   return Response.json({ value });

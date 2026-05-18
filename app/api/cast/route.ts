@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import { proxyMalformedUpstreamBody } from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
 
@@ -40,18 +41,20 @@ export async function POST(req: Request) {
   const text = await res.text();
 
   if (!res.ok) {
-    return Response.json(
-      { error: "cast_failed", status: res.status, body: text },
-      { status: 502 }
-    );
+    const payload: Record<string, unknown> = {
+      error: "cast_failed",
+      status: res.status
+    };
+    if (process.env.NODE_ENV === "development" && text) {
+      payload.debugSnippet =
+        text.length > 300 ? `${text.slice(0, 300)}…` : text;
+    }
+    return Response.json(payload, { status: 502 });
   }
 
   const id = parseIdFromText(text);
   if (id == null) {
-    return Response.json(
-      { error: "bad_cast_response", body: text },
-      { status: 502 }
-    );
+    return proxyMalformedUpstreamBody(text, "bad_cast_response");
   }
 
   return Response.json({ liuyao_id: id });

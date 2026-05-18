@@ -1,4 +1,8 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import {
+  proxyMalformedUpstreamBody,
+  sanitizeUpstreamErrorJson
+} from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
 
@@ -11,13 +15,18 @@ export async function GET(req: Request) {
   }
 
   const url = `${getBackendBaseUrl()}/result?liuyao_id=${encodeURIComponent(id)}`;
-  const res = await fetch(url, { cache: "no-store" });
+
+  const authHeader = req.headers.get("authorization");
+  const headers = new Headers();
+  if (authHeader) headers.set("Authorization", authHeader);
+
+  const res = await fetch(url, { cache: "no-store", headers });
   const text = await res.text();
 
   if (!res.ok) {
     return Response.json(
-      { error: "result_failed", status: res.status, body: text },
-      { status: 502 }
+      sanitizeUpstreamErrorJson(res.status, text, "result_failed"),
+      { status: res.status }
     );
   }
 
@@ -26,10 +35,7 @@ export async function GET(req: Request) {
     const data = JSON.parse(text);
     return Response.json(data);
   } catch {
-    return Response.json(
-      { error: "bad_result_response", body: text },
-      { status: 502 }
-    );
+    return proxyMalformedUpstreamBody(text, "bad_result_response");
   }
 }
 
