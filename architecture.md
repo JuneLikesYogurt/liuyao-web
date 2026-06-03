@@ -38,7 +38,7 @@
 | 起卦入库 | Spring：`POST /?title&date&result`（**仅 query**，需 JWT） | 浏览器：`POST /api/cast`，**JSON body** `{ title, date, result }`；Route 读 JSON 后拼 query 调 Spring；`Authorization` 透传（见 `castLiuYao` / `app/api/cast/route.ts`） |
 | 卦象详情 | `GET /result?liuyao_id=`（需 JWT，仅记录所属用户） | `GET /api/result`；Route 与 `getLiuYaoDetail` 转发 **`Authorization: Bearer`**（服务端由 **`token` cookie** 注入） |
 | 用神计数 | `GET /result/countYongshen`（需 JWT，仅记录所属用户） | `GET /api/result/count-yongshen` → `{ value }`；浏览器经 `fetchCountYongshen` 带 Bearer |
-| 历史 | `GET /history`（需 JWT） | `/api/history` |
+| 历史 | `GET /history`（需 JWT；`q` 标题搜索、`page`/`size` 分页） | `/api/history` |
 
 鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
 
@@ -69,7 +69,7 @@ lib/                 # api 封装、utils
 
 | 模块 | 路径 | 职责 |
 |------|------|------|
-| 起卦与提交 | `app/page.tsx` | 摇卦状态机、`castLiuYao` |
+| 起卦与提交 | `app/page.tsx`、`components/cast/hexagram-cast-panel.tsx`、`lib/liuyao-cast.ts` | 六次逐爻摇卦 / 手动录入、`castLiuYao` |
 | 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；**规划中**：爻位点选用神、确认、调用用神接口、下方结果区 |
 | API 代理 | `app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts` 等 | 转发到 Spring，**转发 Authorization**；**错误体**经 [`lib/proxy-upstream-error.ts`](lib/proxy-upstream-error.ts) 脱敏（生产不附带上游原文，开发可带 `debugSnippet`） |
 | HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`fetchCountYongshen`（Bearer）、`getLiuYaoDetail`（cookie→Bearer）、类型定义 |
@@ -98,7 +98,7 @@ lib/                 # api 封装、utils
 
 ### 首页摇卦线 `LiuYaoLine`
 
-- `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自下而上绘制。
+- `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自下而上绘制。第 `k` 次摇卦写入 `lines[6-k]`；提交前经 `linesToResultString` 反转为初爻在前的 `result` 串。
 
 ### 用户（后端）
 
@@ -143,9 +143,10 @@ lib/                 # api 封装、utils
 - **路由守卫** `middleware.ts`：未登录重定向登录；已登录访问 `/login` 时离开登录页。
 - **登录 /login** `app/login/page.tsx`：鉴权、token 落盘与回跳。
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
-- **首页 /** `app/page.tsx`：摇卦、可选标题、排盘、`LiuYao` 预览。
+- **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
 - **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
-- **历史 /history** `app/history/page.tsx`：列表与后端对接随版本演进。
+- **历史 /history** `app/history/page.tsx`：标题搜索（`q`）、分页（`page`/`size`）、总条数；**ADMIN** 全站列表、`userId` 筛选、条目显示 `username`；查询参数与 URL 同步；鉴权 token 优先 cookie。
+- **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
 - **API Route**：`app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
 
 ### 调用链摘要

@@ -6,6 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
+import { setClientUserRole } from "@/lib/client-user-role";
+
 export function AuthHeader() {
   const router = useRouter();
   const pathname = usePathname();
@@ -23,6 +25,7 @@ export function AuthHeader() {
   const handleLogout = () => {
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("user_label");
+    setClientUserRole(null);
     document.cookie = "token=; path=/; max-age=0; samesite=lax";
     router.push("/login");
   };

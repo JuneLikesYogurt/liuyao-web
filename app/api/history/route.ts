@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
 import {
   proxyMalformedUpstreamBody,
@@ -6,18 +8,30 @@ import {
 
 export const runtime = "nodejs";
 
+const FORWARD_PARAMS = ["page", "size", "q", "has_feedback", "userId"] as const;
+
 export async function GET(req: Request) {
   const incoming = new URL(req.url);
-  const page = incoming.searchParams.get("page") ?? "0";
-  const size = incoming.searchParams.get("size") ?? "20";
 
   const backend = new URL(`${getBackendBaseUrl()}/history`);
-  backend.searchParams.set("page", page);
-  backend.searchParams.set("size", size);
+  for (const key of FORWARD_PARAMS) {
+    const value = incoming.searchParams.get(key);
+    if (value != null && value !== "") {
+      backend.searchParams.set(key, value);
+    }
+  }
 
-  const authHeader = req.headers.get("authorization");
   const headers = new Headers();
-  if (authHeader) headers.set("Authorization", authHeader);
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    headers.set("Authorization", authHeader);
+  } else {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+  }
 
   const res = await fetch(backend.toString(), { method: "GET", headers });
   const text = await res.text();

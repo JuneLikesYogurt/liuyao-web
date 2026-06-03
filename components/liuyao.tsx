@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export type LiuYaoLine = 0 | 1 | 2 | 3;
 
 export interface LiuYaoProps {
-  lines: LiuYaoLine[];
+  lines: Array<LiuYaoLine | undefined>;
   className?: string;
 }
 
@@ -61,8 +61,8 @@ function TaiYinMarker() {
 }
 
 export function LiuYao({ lines, className }: LiuYaoProps) {
-  // lines: length=6, index 0 top -> display from bottom to top
-  const indices = React.useMemo(() => [5, 4, 3, 2, 1, 0], []);
+  // lines[0]=上爻在上，lines[5]=初爻在下
+  const indices = React.useMemo(() => [0, 1, 2, 3, 4, 5], []);
 
   return (
     <div

@@ -14,10 +14,13 @@ import {
   CardTitle
 } from "@/components/ui/card";
 
+import { setClientUserRole } from "@/lib/client-user-role";
+
 interface LoginResponse {
   token?: string;
   tokenType?: string;
   userId?: number;
+  role?: string;
   error?: string;
   message?: string;
 }
@@ -57,6 +60,7 @@ export default function LoginPage() {
       // Keep localStorage for existing API calls that read token in browser.
       window.localStorage.setItem("token", data.token);
       window.localStorage.setItem("user_label", identifier.trim());
+      setClientUserRole(data.role ?? "USER");
       // Also write cookie so middleware can guard routes.
       document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
 
