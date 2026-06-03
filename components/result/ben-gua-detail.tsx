@@ -82,6 +82,8 @@ export function BenGuaDetailContent({
   return (
     <BenGuaYongShenClient
       liuyaoId={liuyaoId}
+      initialComment={detail.comment}
+      initialYongshenRecords={detail.yongshen_records}
       liushouLabels={liushouLabels}
       benLines={benLines}
       bianLines={bianLines}

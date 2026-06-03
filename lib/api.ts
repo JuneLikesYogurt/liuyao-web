@@ -94,6 +94,62 @@ export async function fetchCountYongshen(params: {
   throw new Error("无法解析用神计数结果");
 }
 
+export interface YongshenRecord {
+  yongshen: number;
+  count_value: number;
+  feedback_correct: boolean | null;
+  feedback_time?: string | null;
+}
+
+/** 保存反馈：全量提交 feedback_correct + comment */
+export async function saveResultFeedback(params: {
+  liuyaoId: string;
+  yongshen: number;
+  feedback_correct: boolean | null;
+  comment: string;
+}): Promise<void> {
+  const { liuyaoId, yongshen, feedback_correct, comment } = params;
+  if (!Number.isFinite(yongshen) || yongshen < 0 || yongshen > 6) {
+    throw new Error("用神爻位无效");
+  }
+
+  const token =
+    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+
+  const res = await fetch("/api/result/feedback", {
+    method: "PUT",
+    headers: {
+      "content-type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify({
+      liuyao_id: Number(liuyaoId),
+      yongshen,
+      feedback_correct,
+      comment: comment ?? ""
+    })
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    let hint = raw.trim().slice(0, 120);
+    try {
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed !== null &&
+        "error" in parsed
+      ) {
+        hint = String((parsed as { error?: unknown }).error ?? hint);
+      }
+    } catch {
+      // keep raw hint
+    }
+    throw new Error(hint || `保存失败（${res.status}）`);
+  }
+}
+
 /** 单卦信息。`gua_id` 为自上而下（[0]=上爻，[5]=初爻）；`yao_zhi`/`yao_liuqin` 与 UI 中 `index` 一致（[0]=初爻，[5]=上爻），与 `gua_id` 字符顺序相反，前端对 `gua_id` 单独用下标 `5-index` 对齐。 */
 export interface GuaInfo {
   /** 六位阴阳串：索引 0 = 上爻，索引 5 = 初爻 */
@@ -129,5 +185,9 @@ export interface LiuYaoDetail {
   biangua: GuaInfo | null;
   /** 六兽等，与 `index` 一致：索引 0 = 初爻，5 = 上爻 */
   bengua_liushou_by_yao: string[] | null;
+  /** 整卦反馈记录（全卦一份） */
+  comment?: string | null;
+  /** 各爻用神计算与应验反馈 */
+  yongshen_records?: YongshenRecord[] | null;
   [key: string]: unknown;
 }

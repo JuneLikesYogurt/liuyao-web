@@ -8,12 +8,12 @@ import {
 
 export const runtime = "nodejs";
 
-const FORWARD_PARAMS = ["page", "size", "q", "has_feedback"] as const;
+const FORWARD_PARAMS = ["page", "size", "q", "has_feedback", "userId"] as const;
 
 export async function GET(req: Request) {
   const incoming = new URL(req.url);
 
-  const backend = new URL(`${getBackendBaseUrl()}/history`);
+  const backend = new URL(`${getBackendBaseUrl()}/admin/history`);
   for (const key of FORWARD_PARAMS) {
     const value = incoming.searchParams.get(key);
     if (value != null && value !== "") {
@@ -40,12 +40,12 @@ export async function GET(req: Request) {
   try {
     data = text ? (JSON.parse(text) as unknown) : null;
   } catch {
-    return proxyMalformedUpstreamBody(text, "bad_history_response");
+    return proxyMalformedUpstreamBody(text, "bad_admin_history_response");
   }
 
   if (!res.ok) {
     return Response.json(
-      sanitizeUpstreamErrorJson(res.status, text, "bad_history_response"),
+      sanitizeUpstreamErrorJson(res.status, text, "bad_admin_history_response"),
       { status: res.status }
     );
   }

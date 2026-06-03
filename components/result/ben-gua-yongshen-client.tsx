@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
+import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
 import type { GuaYaoRow } from "@/components/result/gua-module";
 import { ResultPanGrid } from "@/components/result/result-pan-grid";
 import { Button } from "@/components/ui/button";
-import { fetchCountYongshen } from "@/lib/api";
+import {
+  fetchCountYongshen,
+  saveResultFeedback,
+  type YongshenRecord
+} from "@/lib/api";
 import { yaoWeiLabel } from "@/lib/yao-wei";
 
 type MovingRow = {
@@ -14,8 +19,20 @@ type MovingRow = {
   showArrow: boolean;
 };
 
+function recordsByYao(records: YongshenRecord[] | undefined) {
+  const map = new Map<number, YongshenRecord>();
+  for (const row of records ?? []) {
+    if (row.yongshen >= 1 && row.yongshen <= 6) {
+      map.set(row.yongshen, row);
+    }
+  }
+  return map;
+}
+
 export function BenGuaYongShenClient({
   liuyaoId,
+  initialComment,
+  initialYongshenRecords,
   liushouLabels,
   benLines,
   bianLines,
@@ -25,6 +42,8 @@ export function BenGuaYongShenClient({
   bianName
 }: {
   liuyaoId: string;
+  initialComment?: string | null;
+  initialYongshenRecords?: YongshenRecord[] | null;
   liushouLabels: string[];
   benLines: GuaYaoRow[];
   bianLines: GuaYaoRow[];
@@ -33,28 +52,67 @@ export function BenGuaYongShenClient({
   benName: string;
   bianName: string;
 }) {
+  const initialRecordMap = useMemo(
+    () => recordsByYao(initialYongshenRecords ?? undefined),
+    [initialYongshenRecords]
+  );
+
   const [selectedYao, setSelectedYao] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  /** 当前结果区对应的用神爻位（确认后写入，用于标题「以 xx 爻为用神的计算结果」） */
   const [outcomeYao, setOutcomeYao] = useState<number | null>(null);
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState<string | null>(null);
   const [countValue, setCountValue] = useState<number | null>(null);
+  const [feedbackCorrect, setFeedbackCorrect] = useState<boolean | null>(null);
+  const [comment, setComment] = useState(initialComment ?? "");
+  const [recordMap, setRecordMap] = useState(initialRecordMap);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const confirmSubmitLock = useRef(false);
 
   const liuqinForYao = (yaoPos: number) =>
     benLines.find((r) => r.yaoPos === yaoPos)?.liuqin ?? "—";
 
+  const applyYongshenSelection = (yao: number) => {
+    const record = recordMap.get(yao);
+    setSelectedYao(yao);
+    setOutcomeYao(yao);
+    setCalcError(null);
+    setSaveError(null);
+    if (record) {
+      setCountValue(record.count_value);
+      setFeedbackCorrect(record.feedback_correct ?? null);
+    } else {
+      setCountValue(null);
+      setFeedbackCorrect(null);
+    }
+  };
+
   const runCountYongshen = async (yao: number) => {
     if (confirmSubmitLock.current) return;
     confirmSubmitLock.current = true;
     setOutcomeYao(yao);
+    setSelectedYao(yao);
     setCalcError(null);
-    setCountValue(null);
+    setSaveError(null);
     setCalcLoading(true);
     try {
       const value = await fetchCountYongshen({ liuyaoId, yongshen: yao });
+      const existingFeedback =
+        recordMap.get(yao)?.feedback_correct ?? null;
       setCountValue(value);
+      setFeedbackCorrect(existingFeedback);
+      setRecordMap((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(yao);
+        next.set(yao, {
+          yongshen: yao,
+          count_value: value,
+          feedback_correct: existing?.feedback_correct ?? null,
+          feedback_time: existing?.feedback_time ?? null
+        });
+        return next;
+      });
     } catch (e) {
       setCalcError(e instanceof Error ? e.message : "计算失败");
     } finally {
@@ -64,6 +122,11 @@ export function BenGuaYongShenClient({
   };
 
   const handleBenYaoClick = (yaoPos: number) => {
+    const record = recordMap.get(yaoPos);
+    if (record) {
+      applyYongshenSelection(yaoPos);
+      return;
+    }
     setSelectedYao(yaoPos);
     setConfirmOpen(true);
   };
@@ -79,20 +142,44 @@ export function BenGuaYongShenClient({
     await runCountYongshen(selectedYao);
   };
 
-  const handleRetry = () => {
+  const handleRecalculate = () => {
     if (outcomeYao == null) return;
     void runCountYongshen(outcomeYao);
   };
 
+  const handleSaveFeedback = async () => {
+    const canSaveYongshenFeedback =
+      outcomeYao != null && countValue != null && !calcLoading;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveResultFeedback({
+        liuyaoId,
+        yongshen: canSaveYongshenFeedback ? outcomeYao : 0,
+        feedback_correct: canSaveYongshenFeedback ? feedbackCorrect : null,
+        comment
+      });
+      if (canSaveYongshenFeedback && outcomeYao != null && countValue != null) {
+        setRecordMap((prev) => {
+          const next = new Map(prev);
+          next.set(outcomeYao, {
+            yongshen: outcomeYao,
+            count_value: countValue,
+            feedback_correct: feedbackCorrect,
+            feedback_time: new Date().toISOString()
+          });
+          return next;
+        });
+      }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const dialogLiuqin =
     selectedYao != null ? liuqinForYao(selectedYao) : "—";
-
-  const headingMain =
-    outcomeYao != null
-      ? `以${yaoWeiLabel(outcomeYao)}为用神的计算结果`
-      : "用神结果";
-  const headingSub =
-    outcomeYao != null ? `· ${liuqinForYao(outcomeYao)}` : null;
 
   return (
     <>
@@ -102,7 +189,7 @@ export function BenGuaYongShenClient({
       >
         <p className="mb-3 text-[11px] text-muted-foreground">
           点选<strong className="text-foreground">本卦</strong>
-          某一爻作为用神，确认后在下方展示用神计数（需后端服务可用）。换用神请点选其他爻后再次确认。
+          某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
         </p>
         <ResultPanGrid
           liushouLabels={liushouLabels}
@@ -117,50 +204,21 @@ export function BenGuaYongShenClient({
         />
       </section>
 
-      <section
-        className="rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground"
-        aria-busy={calcLoading}
-        aria-live="polite"
-        aria-label={outcomeYao != null ? headingMain : "用神结果"}
-      >
-        <div>
-          <div className="text-[11px] font-medium text-foreground">
-            {headingMain}
-          </div>
-          {headingSub && (
-            <div className="mt-0.5 text-[11px] text-muted-foreground">
-              {headingSub}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-2 text-xs leading-relaxed">
-          {calcLoading ? (
-            <p className="text-muted-foreground">请求中…</p>
-          ) : calcError ? (
-            <div className="space-y-2">
-              <p className="text-destructive">{calcError}</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={handleRetry}
-              >
-                重试
-              </Button>
-            </div>
-          ) : countValue != null ? (
-            <p className="text-foreground">
-              用神计数：<span className="tabular-nums">{countValue}</span>
-            </p>
-          ) : (
-            <p>
-              请先在本卦中点选一爻，确认后此处将展示计算结果。
-            </p>
-          )}
-        </div>
-      </section>
+      <GuaFeedbackPanel
+        yongshen={outcomeYao}
+        liuqin={outcomeYao != null ? liuqinForYao(outcomeYao) : undefined}
+        countValue={countValue}
+        calcLoading={calcLoading}
+        calcError={calcError}
+        feedbackCorrect={feedbackCorrect}
+        comment={comment}
+        saving={saving}
+        saveError={saveError}
+        onFeedbackCorrectChange={setFeedbackCorrect}
+        onCommentChange={setComment}
+        onRecalculate={handleRecalculate}
+        onSave={handleSaveFeedback}
+      />
 
       {confirmOpen && selectedYao != null && (
         <>

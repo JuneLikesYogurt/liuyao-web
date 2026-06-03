@@ -38,7 +38,8 @@
 | 起卦入库 | Spring：`POST /?title&date&result`（**仅 query**，需 JWT） | 浏览器：`POST /api/cast`，**JSON body** `{ title, date, result }`；Route 读 JSON 后拼 query 调 Spring；`Authorization` 透传（见 `castLiuYao` / `app/api/cast/route.ts`） |
 | 卦象详情 | `GET /result?liuyao_id=`（需 JWT，仅记录所属用户） | `GET /api/result`；Route 与 `getLiuYaoDetail` 转发 **`Authorization: Bearer`**（服务端由 **`token` cookie** 注入） |
 | 用神计数 | `GET /result/countYongshen`（需 JWT，仅记录所属用户） | `GET /api/result/count-yongshen` → `{ value }`；浏览器经 `fetchCountYongshen` 带 Bearer |
-| 历史 | `GET /history`（需 JWT；`q` 标题搜索、`page`/`size` 分页） | `/api/history` |
+| 历史（本人） | `GET /history`（需 JWT；`q`、`page`/`size`） | `/api/history` |
+| 管理 · 全站历史 | `GET /admin/history`（需 ADMIN） | `/api/admin/history` |
 
 鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
 
@@ -145,9 +146,10 @@ lib/                 # api 封装、utils
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
 - **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
 - **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
-- **历史 /history** `app/history/page.tsx`：标题搜索（`q`）、分页（`page`/`size`）、总条数；**ADMIN** 全站列表、`userId` 筛选、条目显示 `username`；查询参数与 URL 同步；鉴权 token 优先 cookie。
+- **历史 /history** `app/history/page.tsx`：仅本人；搜索、分页、URL 同步（共用 `HistoryListView`）。
+- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站 + `userId` 筛选 + 用户名；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
 - **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
-- **API Route**：`app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
+- **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
 
 ### 调用链摘要
 

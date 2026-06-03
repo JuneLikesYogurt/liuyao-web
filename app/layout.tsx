@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 
 import { AuthHeader } from "@/components/auth-header";
-import { cn } from "@/lib/utils";
+import { SiteNav } from "@/components/site-nav";
 
 export const metadata: Metadata = {
   title: "六爻起卦 · 在线占卜",
   description: "基于六爻的在线起卦与解卦工具"
 };
-
-const navItems = [
-  { href: "/", label: "起卦" },
-  { href: "/result", label: "结果" },
-  { href: "/history", label: "历史记录" }
-];
 
 function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -38,21 +31,7 @@ function RootLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="flex items-center gap-3">
-                <nav className="flex items-center gap-1 rounded-full border bg-card px-1 py-1 text-sm shadow-sm">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                        "data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
-                      )}
-                      data-active={false}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
+                <SiteNav />
                 <AuthHeader />
               </div>
             </div>
