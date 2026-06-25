@@ -41,8 +41,8 @@ export function hasAnyLine(lines: CastLineSlot[]): boolean {
   return lines.some((l) => l !== undefined);
 }
 
-/** 初爻在前、上爻在后，供 cast API */
+/** 上爻在前、初爻在后，与后端 yaoguaRes / gua_id 字符序一致 */
 export function linesToResultString(lines: CastLineSlot[]): string | null {
   if (!isLinesComplete(lines)) return null;
-  return [...lines].reverse().map((v) => String(v)).join("");
+  return lines.map((v) => String(v)).join("");
 }

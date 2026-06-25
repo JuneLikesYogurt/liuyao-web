@@ -99,7 +99,7 @@ lib/                 # api 封装、utils
 
 ### 首页摇卦线 `LiuYaoLine`
 
-- `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自下而上绘制。第 `k` 次摇卦写入 `lines[6-k]`；提交前经 `linesToResultString` 反转为初爻在前的 `result` 串。
+- `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自上而下绘制。第 `k` 次摇卦写入 `lines[6-k]`；提交时 `linesToResultString` 按 `lines[0]…lines[5]` 直接拼接，**上爻在前**，与后端 `yaoguaRes` / `gua_id` 一致。
 
 ### 用户（后端）
 
