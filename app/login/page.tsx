@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 
+import { authCookieSuffix, TOKEN_MAX_AGE_SEC } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
 
 interface LoginResponse {
@@ -25,12 +26,11 @@ interface LoginResponse {
   message?: string;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -61,15 +61,16 @@ export default function LoginPage() {
       window.localStorage.setItem("token", data.token);
       window.localStorage.setItem("user_label", identifier.trim());
       setClientUserRole(data.role ?? "USER");
-      // Also write cookie so middleware can guard routes.
-      document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
+      // Cookie for middleware; API route also sends Set-Cookie (belt and suspenders).
+      document.cookie = `token=${data.token}; max-age=${TOKEN_MAX_AGE_SEC}; ${authCookieSuffix()}`;
 
       const nextPath = searchParams.get("next");
-      if (nextPath && nextPath.startsWith("/")) {
-        router.push(nextPath);
-      } else {
-        router.push("/");
-      }
+      const target =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/";
+      // Full navigation so middleware sees the cookie (client router.push can race).
+      window.location.assign(target);
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败");
     } finally {
@@ -132,6 +133,25 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
+          <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl">登录</CardTitle>
+              <CardDescription>加载中…</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }
 

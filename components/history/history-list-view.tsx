@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Card,
@@ -104,7 +104,7 @@ function buildPageJumpItems(
   return items;
 }
 
-export function HistoryListView({
+function HistoryListViewInner({
   basePath,
   apiPath,
   title,
@@ -517,5 +517,26 @@ export function HistoryListView({
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function HistoryListFallback({ title }: { title: string }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10">
+      <Card className="border-slate-200/80 bg-white/95 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardDescription>加载中…</CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  );
+}
+
+export function HistoryListView(props: HistoryListViewProps) {
+  return (
+    <Suspense fallback={<HistoryListFallback title={props.title} />}>
+      <HistoryListViewInner {...props} />
+    </Suspense>
   );
 }

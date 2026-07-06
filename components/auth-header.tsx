@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
+import { authCookieSuffix } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
 
 export function AuthHeader() {
@@ -26,7 +27,7 @@ export function AuthHeader() {
     window.localStorage.removeItem("token");
     window.localStorage.removeItem("user_label");
     setClientUserRole(null);
-    document.cookie = "token=; path=/; max-age=0; samesite=lax";
+    document.cookie = `token=; max-age=0; ${authCookieSuffix()}`;
     router.push("/login");
   };
 

@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import { buildAuthSetCookie } from "@/lib/auth-cookie";
 import {
   proxyMalformedUpstreamBody,
   sanitizeUpstreamErrorJson
@@ -47,6 +48,14 @@ export async function POST(req: Request) {
     );
   }
 
-  return Response.json(data, { status: res.status });
+  const payload = data as { token?: string };
+  const response = Response.json(data, { status: res.status });
+  if (payload.token) {
+    response.headers.append(
+      "Set-Cookie",
+      buildAuthSetCookie(payload.token, req.headers.get("x-forwarded-proto"))
+    );
+  }
+  return response;
 }
 
