@@ -1,24 +1,22 @@
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { HistoryListView } from "@/components/history/history-list-view";
-import { isClientAdmin } from "@/lib/client-user-role";
+import {
+  isAdminSession,
+  TOKEN_COOKIE,
+  USER_ROLE_COOKIE
+} from "@/lib/auth-cookie";
 
-export default function AdminHistoryPage() {
-  const router = useRouter();
+export default async function AdminHistoryPage() {
+  const cookieStore = await cookies();
+  const isAdmin = isAdminSession(
+    cookieStore.get(TOKEN_COOKIE)?.value,
+    cookieStore.get(USER_ROLE_COOKIE)?.value
+  );
 
-  useEffect(() => {
-    if (!isClientAdmin()) {
-      router.replace("/history");
-    }
-  }, [router]);
-
-  if (!isClientAdmin()) {
-    return (
-      <p className="text-sm text-muted-foreground">正在跳转…</p>
-    );
+  if (!isAdmin) {
+    redirect("/history");
   }
 
   return (

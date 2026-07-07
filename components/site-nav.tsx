@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { isClientAdmin } from "@/lib/client-user-role";
 
 const baseNavItems = [
   { href: "/", label: "起卦" },
@@ -12,12 +11,22 @@ const baseNavItems = [
   { href: "/history", label: "历史记录" }
 ] as const;
 
-export function SiteNav() {
-  const pathname = usePathname();
-  const admin = isClientAdmin();
+const adminNavItem = { href: "/admin/history", label: "管理" } as const;
 
-  const navItems = admin
-    ? [...baseNavItems, { href: "/admin/history", label: "管理" }]
+const AUTH_PATHS = new Set(["/login", "/register"]);
+
+export interface SiteNavProps {
+  /** 由服务端 layout 根据 user_role cookie 注入，首屏即正确 Tab 数。 */
+  isAdmin: boolean;
+}
+
+export function SiteNav({ isAdmin }: SiteNavProps) {
+  const pathname = usePathname();
+  // 登录/注册页不展示管理 Tab（登出后 cookie 清空前 layout 仍可能带 isAdmin）。
+  const showAdmin = isAdmin && !AUTH_PATHS.has(pathname);
+
+  const navItems = showAdmin
+    ? [...baseNavItems, adminNavItem]
     : baseNavItems;
 
   return (

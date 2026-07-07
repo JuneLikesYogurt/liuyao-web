@@ -59,71 +59,81 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
-      <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl">注册</CardTitle>
-          <CardDescription>创建账号后返回登录页继续使用。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="username" className="block text-sm font-medium text-slate-800">
-                用户名
-              </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                minLength={2}
-                maxLength={64}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
-                placeholder="请输入用户名"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-slate-800">
-                密码
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                maxLength={128}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
-                placeholder="请输入密码（至少 6 位）"
-              />
-            </div>
-
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "提交中..." : "注册"}
-            </Button>
-            <Button type="button" variant="outline" className="w-full" asChild>
-              <Link href="/login">去登录</Link>
-            </Button>
-          </form>
-
-          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-
-          {success && (
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-              <p className="font-medium text-slate-800">注册成功</p>
-              <p className="mt-1 text-slate-700">请返回登录页完成登录。</p>
-              <div className="mt-3">
-                <Button type="button" size="sm" asChild>
-                  <Link href="/login">去登录</Link>
-                </Button>
+    <>
+      <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
+        <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl">注册</CardTitle>
+            <CardDescription>创建账号后返回登录页继续使用。</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="username" className="block text-sm font-medium text-slate-800">
+                  用户名
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={2}
+                  maxLength={64}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                  placeholder="请输入用户名"
+                />
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-800">
+                  密码
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  maxLength={128}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                  placeholder="请输入密码（至少 6 位）"
+                />
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "提交中..." : "注册"}
+              </Button>
+            </form>
+
+            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+          </CardContent>
+        </Card>
+      </div>
+
+      {success && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="register-success-title"
+        >
+          <Card className="w-full max-w-sm border-slate-200/80 bg-white shadow-lg">
+            <CardHeader>
+              <CardTitle id="register-success-title" className="text-lg">
+                注册成功
+              </CardTitle>
+              <CardDescription>请返回登录页完成登录。</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button type="button" className="w-full" asChild>
+                <Link href="/login">返回登录</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
   );
 }
