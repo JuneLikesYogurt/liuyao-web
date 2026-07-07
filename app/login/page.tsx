@@ -14,7 +14,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 
-import { authCookieSuffix, TOKEN_MAX_AGE_SEC } from "@/lib/auth-cookie";
+import { writeClientSessionCookies } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
 
 interface LoginResponse {
@@ -57,12 +57,14 @@ function LoginForm() {
         throw new Error("登录成功但未返回 token");
       }
 
+      const role = data.role?.trim() || "USER";
+
       // Keep localStorage for existing API calls that read token in browser.
       window.localStorage.setItem("token", data.token);
       window.localStorage.setItem("user_label", identifier.trim());
-      setClientUserRole(data.role ?? "USER");
-      // Cookie for middleware; API route also sends Set-Cookie (belt and suspenders).
-      document.cookie = `token=${data.token}; max-age=${TOKEN_MAX_AGE_SEC}; ${authCookieSuffix()}`;
+      setClientUserRole(role);
+      // Cookie for middleware + layout SSR; API route also sets via cookies().set().
+      writeClientSessionCookies(data.token, role);
 
       const nextPath = searchParams.get("next");
       const target =
@@ -154,4 +156,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

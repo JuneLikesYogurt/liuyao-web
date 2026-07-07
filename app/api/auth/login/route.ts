@@ -1,5 +1,10 @@
+import { cookies } from "next/headers";
+
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
-import { buildAuthSetCookie } from "@/lib/auth-cookie";
+import {
+  applyServerSessionCookies,
+  secureFromProto
+} from "@/lib/auth-cookie";
 import {
   proxyMalformedUpstreamBody,
   sanitizeUpstreamErrorJson
@@ -48,14 +53,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const payload = data as { token?: string };
-  const response = Response.json(data, { status: res.status });
-  if (payload.token) {
-    response.headers.append(
-      "Set-Cookie",
-      buildAuthSetCookie(payload.token, req.headers.get("x-forwarded-proto"))
-    );
-  }
-  return response;
-}
+  const payload = data as { token?: string; role?: string };
+  const role = payload.role?.trim() || "USER";
+  const secure = secureFromProto(req.headers.get("x-forwarded-proto"));
 
+  if (payload.token) {
+    const cookieStore = await cookies();
+    applyServerSessionCookies(cookieStore, {
+      token: payload.token,
+      role,
+      secure
+    });
+  }
+
+  return Response.json(data, { status: res.status });
+}

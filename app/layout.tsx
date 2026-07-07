@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import "./globals.css";
 
 import { AuthHeader } from "@/components/auth-header";
 import { SiteNav } from "@/components/site-nav";
+import {
+  isAdminSession,
+  TOKEN_COOKIE,
+  USER_ROLE_COOKIE
+} from "@/lib/auth-cookie";
 
 export const metadata: Metadata = {
   title: "六爻起卦 · 在线占卜",
   description: "基于六爻的在线起卦与解卦工具"
 };
 
-function RootLayout({ children }: { children: React.ReactNode }) {
+async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const isAdmin = isAdminSession(
+    cookieStore.get(TOKEN_COOKIE)?.value,
+    cookieStore.get(USER_ROLE_COOKIE)?.value
+  );
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="min-h-screen bg-gradient-to-b from-background via-background to-muted text-foreground">
@@ -31,7 +43,7 @@ function RootLayout({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="flex items-center gap-3">
-                <SiteNav />
+                <SiteNav isAdmin={isAdmin} />
                 <AuthHeader />
               </div>
             </div>
@@ -56,4 +68,3 @@ function RootLayout({ children }: { children: React.ReactNode }) {
 }
 
 export default RootLayout;
-
