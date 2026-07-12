@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
 import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
@@ -7,7 +8,14 @@ import type { GuaYaoRow } from "@/components/result/gua-module";
 import { ResultPanGrid } from "@/components/result/result-pan-grid";
 import { Button } from "@/components/ui/button";
 import {
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import {
   fetchCountYongshen,
+  renameHistoryItem,
   saveResultFeedback,
   type YongshenRecord
 } from "@/lib/api";
@@ -31,6 +39,13 @@ function recordsByYao(records: YongshenRecord[] | undefined) {
 
 export function BenGuaYongShenClient({
   liuyaoId,
+  initialTitle,
+  date,
+  year,
+  month,
+  day,
+  hour,
+  xunkong,
   initialComment,
   initialYongshenRecords,
   liushouLabels,
@@ -42,6 +57,13 @@ export function BenGuaYongShenClient({
   bianName
 }: {
   liuyaoId: string;
+  initialTitle?: string | null;
+  date?: string | null;
+  year?: string | null;
+  month?: string | null;
+  day?: string | null;
+  hour?: string | null;
+  xunkong?: string | null;
   initialComment?: string | null;
   initialYongshenRecords?: YongshenRecord[] | null;
   liushouLabels: string[];
@@ -57,6 +79,11 @@ export function BenGuaYongShenClient({
     [initialYongshenRecords]
   );
 
+  const defaultTitle = initialTitle?.trim() || "起卦";
+  const [title, setTitle] = useState(defaultTitle);
+  const [savedTitle, setSavedTitle] = useState(defaultTitle);
+  const [titleEditing, setTitleEditing] = useState(false);
+
   const [selectedYao, setSelectedYao] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [outcomeYao, setOutcomeYao] = useState<number | null>(null);
@@ -69,6 +96,7 @@ export function BenGuaYongShenClient({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const confirmSubmitLock = useRef(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const liuqinForYao = (yaoPos: number) =>
     benLines.find((r) => r.yaoPos === yaoPos)?.liuqin ?? "—";
@@ -147,12 +175,42 @@ export function BenGuaYongShenClient({
     void runCountYongshen(outcomeYao);
   };
 
-  const handleSaveFeedback = async () => {
+  const beginEditTitle = () => {
+    setTitleEditing(true);
+    setSaveError(null);
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
+  };
+
+  const handleSave = async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setSaveError("标题不能为空");
+      setTitleEditing(true);
+      return;
+    }
+
     const canSaveYongshenFeedback =
       outcomeYao != null && countValue != null && !calcLoading;
+    const liuyaoNumericId = Number.parseInt(liuyaoId, 10);
     setSaving(true);
     setSaveError(null);
     try {
+      if (
+        Number.isFinite(liuyaoNumericId) &&
+        liuyaoNumericId > 0 &&
+        trimmedTitle !== savedTitle
+      ) {
+        await renameHistoryItem({
+          liuyaoId: liuyaoNumericId,
+          title: trimmedTitle
+        });
+        setSavedTitle(trimmedTitle);
+        setTitle(trimmedTitle);
+      }
+
       await saveResultFeedback({
         liuyaoId,
         yongshen: canSaveYongshenFeedback ? outcomeYao : 0,
@@ -171,6 +229,7 @@ export function BenGuaYongShenClient({
           return next;
         });
       }
+      setTitleEditing(false);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "保存失败");
     } finally {
@@ -183,42 +242,117 @@ export function BenGuaYongShenClient({
 
   return (
     <>
-      <section
-        className="overflow-x-auto rounded-xl bg-white/90 p-4 shadow-sm sm:p-5"
-        data-liuyao-id={liuyaoId}
-      >
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          点选<strong className="text-foreground">本卦</strong>
-          某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
-        </p>
-        <ResultPanGrid
-          liushouLabels={liushouLabels}
-          benName={benName}
-          benLines={benLines}
-          hasBian={hasBian}
-          movingRows={movingRows}
-          bianName={bianName}
-          bianLines={bianLines}
-          selectedYao={selectedYao}
-          onBenYaoClick={handleBenYaoClick}
-        />
-      </section>
+      <CardHeader>
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setTitle(savedTitle);
+                setTitleEditing(false);
+              }
+            }}
+            aria-label="卦例标题"
+            className="w-full rounded-md border border-input bg-background px-2 py-1 text-base font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-lg"
+          />
+        ) : (
+          <CardTitle className="text-base sm:text-lg">
+            <button
+              type="button"
+              onClick={beginEditTitle}
+              className="w-full text-left underline-offset-4 hover:underline"
+              title="点击修改标题"
+            >
+              {title}
+            </button>
+          </CardTitle>
+        )}
+        <CardDescription className="text-xs">
+          {date ?? "—"}
+          {titleEditing ? " · 编辑标题后点下方「保存」" : " · 点击标题可修改"}
+        </CardDescription>
+      </CardHeader>
 
-      <GuaFeedbackPanel
-        yongshen={outcomeYao}
-        liuqin={outcomeYao != null ? liuqinForYao(outcomeYao) : undefined}
-        countValue={countValue}
-        calcLoading={calcLoading}
-        calcError={calcError}
-        feedbackCorrect={feedbackCorrect}
-        comment={comment}
-        saving={saving}
-        saveError={saveError}
-        onFeedbackCorrectChange={setFeedbackCorrect}
-        onCommentChange={setComment}
-        onRecalculate={handleRecalculate}
-        onSave={handleSaveFeedback}
-      />
+      <CardContent className="space-y-4 text-sm text-muted-foreground">
+        <section className="rounded-lg border bg-muted/40 p-4">
+          <div className="grid grid-cols-5 gap-3 text-center text-xs">
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">年</div>
+              <div className="text-xs text-foreground">{year ?? "—"}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">月</div>
+              <div className="text-xs text-foreground">{month ?? "—"}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">日</div>
+              <div className="text-xs text-foreground">{day ?? "—"}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">时</div>
+              <div className="text-xs text-foreground">{hour ?? "—"}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">旬空</div>
+              <div className="text-xs text-foreground">{xunkong ?? "—"}</div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className="overflow-x-auto rounded-xl bg-white/90 p-4 shadow-sm sm:p-5"
+          data-liuyao-id={liuyaoId}
+        >
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            点选<strong className="text-foreground">本卦</strong>
+            某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
+          </p>
+          <ResultPanGrid
+            liushouLabels={liushouLabels}
+            benName={benName}
+            benLines={benLines}
+            hasBian={hasBian}
+            movingRows={movingRows}
+            bianName={bianName}
+            bianLines={bianLines}
+            selectedYao={selectedYao}
+            onBenYaoClick={handleBenYaoClick}
+          />
+        </section>
+
+        <GuaFeedbackPanel
+          yongshen={outcomeYao}
+          liuqin={outcomeYao != null ? liuqinForYao(outcomeYao) : undefined}
+          countValue={countValue}
+          calcLoading={calcLoading}
+          calcError={calcError}
+          feedbackCorrect={feedbackCorrect}
+          comment={comment}
+          saving={saving}
+          saveError={saveError}
+          onFeedbackCorrectChange={setFeedbackCorrect}
+          onCommentChange={setComment}
+          onRecalculate={handleRecalculate}
+          onSave={handleSave}
+        />
+
+        <div className="flex flex-wrap gap-3 pt-2 text-xs">
+          <Link
+            href="/"
+            className="rounded-full border bg-background px-3 py-1.5 text-muted-foreground underline-offset-4 hover:bg-accent hover:text-accent-foreground hover:underline"
+          >
+            返回起卦
+          </Link>
+          <Link
+            href="/history"
+            className="rounded-full border bg-background px-3 py-1.5 text-muted-foreground underline-offset-4 hover:bg-accent hover:text-accent-foreground hover:underline"
+          >
+            历史记录
+          </Link>
+        </div>
+      </CardContent>
 
       {confirmOpen && selectedYao != null && (
         <>

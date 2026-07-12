@@ -152,7 +152,7 @@ export function GuaFeedbackPanel({
           disabled={saving || calcLoading}
           onClick={() => void onSave()}
         >
-          {saving ? "保存中…" : "保存反馈"}
+          {saving ? "保存中…" : "保存"}
         </Button>
       </CardFooter>
     </Card>

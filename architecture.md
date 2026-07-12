@@ -39,7 +39,7 @@
 | 卦象详情 | `GET /result?liuyao_id=`（需 JWT，仅记录所属用户） | `GET /api/result`；Route 与 `getLiuYaoDetail` 转发 **`Authorization: Bearer`**（服务端由 **`token` cookie** 注入） |
 | 用神计数 | `GET /result/countYongshen`（需 JWT，仅记录所属用户） | `GET /api/result/count-yongshen` → `{ value }`；浏览器经 `fetchCountYongshen` 带 Bearer |
 | 历史（本人） | `GET /history`（需 JWT；`q`、`page`/`size`） | `/api/history` |
-| 历史 · 重命名 | `PATCH /history/{id}`（本人或 ADMIN） | `/api/history/[id]` |
+| 历史 · 重命名 | `PATCH /history/{id}`（本人或 ADMIN；结果页「保存」触发） | `/api/history/[id]` |
 | 管理 · 全站历史 | `GET /admin/history`（需 ADMIN） | `/api/admin/history` |
 
 鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
@@ -146,9 +146,9 @@ lib/                 # api 封装、utils
 - **登录 /login** `app/login/page.tsx`：鉴权、token 落盘与回跳。
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
 - **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
-- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
-- **历史 /history** `app/history/page.tsx`：仅本人；`q` 按标题或反馈记录模糊搜索、分页、URL 同步；列表可重命名（共用 `HistoryListView`）。
-- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；可重命名任意卦例；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
+- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`；点击标题可编辑，反馈区「保存」一并提交标题（`PATCH /history/{id}`）与反馈。
+- **历史 /history** `app/history/page.tsx`：仅本人；`q` 按标题或反馈记录模糊搜索、分页、URL 同步（共用 `HistoryListView`）。
+- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
 - **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
 - **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/history/[id]/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
 
