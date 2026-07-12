@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +10,6 @@ import { clearClientSessionCookies } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
 
 export function AuthHeader() {
-  const router = useRouter();
   const pathname = usePathname();
   const [userLabel, setUserLabel] = useState<string | null>(null);
 
@@ -28,7 +27,7 @@ export function AuthHeader() {
     window.localStorage.removeItem("user_label");
     setClientUserRole(null);
     clearClientSessionCookies();
-    router.push("/login");
+    window.location.assign("/login");
   };
 
   return (

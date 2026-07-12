@@ -15,7 +15,8 @@ node_modules
 .env.*.local
 
 # Cursor 本地计划/缓存（规则若不想共享可写 .cursor/）
-.cursor/plans/
+.cursor/
+docs
 
 # 测试/日志（按需）
 coverage/

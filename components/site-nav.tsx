@@ -22,10 +22,13 @@ export interface SiteNavProps {
 
 export function SiteNav({ isAdmin }: SiteNavProps) {
   const pathname = usePathname();
-  // 登录/注册页不展示管理 Tab（登出后 cookie 清空前 layout 仍可能带 isAdmin）。
-  const showAdmin = isAdmin && !AUTH_PATHS.has(pathname);
 
-  const navItems = showAdmin
+  // 登录/注册页不展示导航 Tab。
+  if (AUTH_PATHS.has(pathname)) {
+    return null;
+  }
+
+  const navItems = isAdmin
     ? [...baseNavItems, adminNavItem]
     : baseNavItems;
 
