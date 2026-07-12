@@ -361,7 +361,7 @@ function HistoryListViewInner({
           )}
 
           {!loading && items.length > 0 && (
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <div className="grid gap-2 text-sm sm:grid-cols-2">
               {items.map((row, idx) => {
                 const id = row.liuyao_id;
                 const key =
@@ -375,45 +375,47 @@ function HistoryListViewInner({
                 return (
                   <div
                     key={key}
-                    className="flex flex-col rounded-lg border bg-card/60 p-3"
+                    className="flex flex-col rounded-lg border bg-card/60 px-3 py-2"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      {href ? (
-                        <Link
-                          href={href}
-                          className="min-w-0 flex-1 text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
-                        >
-                          {row.title?.trim() || "（无标题）"}
-                        </Link>
-                      ) : (
-                        <span className="min-w-0 flex-1 text-sm font-medium">
-                          {row.title?.trim() || "（无标题）"}
-                        </span>
-                      )}
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {row.date ?? "—"}
-                      </span>
-                    </div>
-                    {showOwnerMeta && (row.username || row.user_id != null) && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {row.username
-                          ? row.username
-                          : `用户 ${row.user_id}`}
-                      </p>
-                    )}
-                    {id != null && (
-                      <div className="mt-2 flex justify-end">
+                      <div className="min-w-0 flex-1">
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="block truncate text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                          >
+                            {row.title?.trim() || "（无标题）"}
+                          </Link>
+                        ) : (
+                          <span className="block truncate text-sm font-medium">
+                            {row.title?.trim() || "（无标题）"}
+                          </span>
+                        )}
+                        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                          {row.date ?? "—"}
+                          {showOwnerMeta && row.username
+                            ? ` · ${row.username}`
+                            : null}
+                          {showOwnerMeta &&
+                          row.user_id != null &&
+                          !row.username
+                            ? ` · 用户 ${row.user_id}`
+                            : null}
+                        </p>
+                      </div>
+                      {id != null && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
+                          className="h-7 shrink-0 px-2 text-xs"
                           disabled={loading || actionBusyId != null}
                           onClick={() => void handleDelete(row)}
                         >
                           {busy ? "删除中…" : "删除"}
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
