@@ -24,9 +24,8 @@ export default async function AdminHistoryPage() {
       basePath="/admin/history"
       apiPath="/api/admin/history"
       title="卦例管理"
-      description="全站起卦记录；可按用户编号筛选，点击条目可查看卦象详情。"
+      description="全站起卦记录；可按标题或反馈记录搜索，点击条目可查看卦象详情。"
       loginNext="/admin/history"
-      showUserFilter
       showOwnerMeta
     />
   );

@@ -39,7 +39,6 @@ export interface HistoryListViewProps {
   title: string;
   description: string;
   loginNext: string;
-  showUserFilter?: boolean;
   showOwnerMeta?: boolean;
 }
 
@@ -54,14 +53,6 @@ function parseSize(value: string | null): number {
   return PAGE_SIZE_OPTIONS.includes(n as (typeof PAGE_SIZE_OPTIONS)[number])
     ? n
     : DEFAULT_PAGE_SIZE;
-}
-
-function parseUserId(value: string | null): string {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const n = Number.parseInt(trimmed, 10);
-  return Number.isFinite(n) && n > 0 ? String(n) : "";
 }
 
 function buildPageJumpItems(
@@ -110,7 +101,6 @@ function HistoryListViewInner({
   title,
   description,
   loginNext,
-  showUserFilter = false,
   showOwnerMeta = false
 }: HistoryListViewProps) {
   const router = useRouter();
@@ -119,7 +109,6 @@ function HistoryListViewInner({
   const pageFromUrl = parsePage(searchParams.get("page"));
   const sizeFromUrl = parseSize(searchParams.get("size"));
   const qFromUrl = searchParams.get("q")?.trim() ?? "";
-  const userIdFromUrl = showUserFilter ? parseUserId(searchParams.get("userId")) : "";
 
   const [items, setItems] = useState<HistoryRow[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -127,37 +116,30 @@ function HistoryListViewInner({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(qFromUrl);
-  const [userIdInput, setUserIdInput] = useState(userIdFromUrl);
 
   const queryKey = useMemo(
-    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}|${userIdFromUrl}`,
-    [pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]
+    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}`,
+    [pageFromUrl, sizeFromUrl, qFromUrl]
   );
 
   useEffect(() => {
     setSearchInput(qFromUrl);
   }, [qFromUrl]);
 
-  useEffect(() => {
-    setUserIdInput(userIdFromUrl);
-  }, [userIdFromUrl]);
-
   const replaceUrl = useCallback(
-    (next: { page: number; size: number; q: string; userId?: string }) => {
+    (next: { page: number; size: number; q: string }) => {
       const qs = new URLSearchParams();
       if (next.page > 0) qs.set("page", String(next.page));
       if (next.size !== DEFAULT_PAGE_SIZE) qs.set("size", String(next.size));
       if (next.q) qs.set("q", next.q);
-      const userId = next.userId ?? userIdFromUrl;
-      if (showUserFilter && userId) qs.set("userId", userId);
       const query = qs.toString();
       router.replace(query ? `${basePath}?${query}` : basePath);
     },
-    [router, basePath, showUserFilter, userIdFromUrl]
+    [router, basePath]
   );
 
   const load = useCallback(
-    async (pageIndex: number, pageSize: number, q: string, userId: string) => {
+    async (pageIndex: number, pageSize: number, q: string) => {
       const token = getClientAuthToken();
 
       if (!token) {
@@ -175,7 +157,6 @@ function HistoryListViewInner({
           size: String(pageSize)
         });
         if (q) qs.set("q", q);
-        if (showUserFilter && userId) qs.set("userId", userId);
 
         const res = await fetch(`${apiPath}?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -221,20 +202,19 @@ function HistoryListViewInner({
         setLoading(false);
       }
     },
-    [router, apiPath, loginNext, showUserFilter]
+    [router, apiPath, loginNext]
   );
 
   useEffect(() => {
-    void load(pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl);
-  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]);
+    void load(pageFromUrl, sizeFromUrl, qFromUrl);
+  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: searchInput.trim(),
-      userId: showUserFilter ? parseUserId(userIdInput) : ""
+      q: searchInput.trim()
     });
   };
 
@@ -243,18 +223,7 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: "",
-      userId: showUserFilter ? userIdFromUrl : ""
-    });
-  };
-
-  const handleClearUserFilter = () => {
-    setUserIdInput("");
-    replaceUrl({
-      page: 0,
-      size: sizeFromUrl,
-      q: qFromUrl,
-      userId: ""
+      q: ""
     });
   };
 
@@ -262,8 +231,7 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: nextSize,
-      q: qFromUrl,
-      userId: userIdFromUrl
+      q: qFromUrl
     });
   };
 
@@ -274,11 +242,10 @@ function HistoryListViewInner({
       replaceUrl({
         page: nextPage,
         size: sizeFromUrl,
-        q: qFromUrl,
-        userId: userIdFromUrl
+        q: qFromUrl
       });
     },
-    [replaceUrl, sizeFromUrl, qFromUrl, userIdFromUrl, totalPages]
+    [replaceUrl, sizeFromUrl, qFromUrl, totalPages]
   );
 
   const pageJumpItems = useMemo(
@@ -293,9 +260,7 @@ function HistoryListViewInner({
     ? "加载中…"
     : qFromUrl
       ? `共 ${totalElements} 条匹配「${qFromUrl}」`
-      : showUserFilter && userIdFromUrl
-        ? `共 ${totalElements} 条（用户 ${userIdFromUrl}）`
-        : `共 ${totalElements} 条记录`;
+      : `共 ${totalElements} 条记录`;
 
   return (
     <div className="flex flex-1 flex-col gap-4 pt-2 sm:pt-4">
@@ -313,8 +278,8 @@ function HistoryListViewInner({
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="按标题搜索"
-              aria-label="按标题搜索"
+              placeholder="按标题或反馈记录搜索"
+              aria-label="按标题或反馈记录搜索"
               className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
             />
             <Button type="submit" variant="outline" size="sm" disabled={loading}>
@@ -334,39 +299,6 @@ function HistoryListViewInner({
               <span aria-hidden="true" className="hidden sm:block" />
             )}
           </form>
-
-          {showUserFilter && (
-            <form
-              onSubmit={handleSearchSubmit}
-              className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
-            >
-              <input
-                type="text"
-                inputMode="numeric"
-                value={userIdInput}
-                onChange={(e) => setUserIdInput(e.target.value)}
-                placeholder="按用户编号筛选（留空为全站）"
-                aria-label="按用户编号筛选"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
-              />
-              <Button type="submit" variant="outline" size="sm" disabled={loading}>
-                筛选用户
-              </Button>
-              {userIdFromUrl ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={loading}
-                  onClick={handleClearUserFilter}
-                >
-                  清除用户
-                </Button>
-              ) : (
-                <span aria-hidden="true" className="hidden sm:block" />
-              )}
-            </form>
-          )}
 
           <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-[1fr_auto] sm:items-center">
             <p>{countLabel}</p>

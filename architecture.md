@@ -146,8 +146,8 @@ lib/                 # api 封装、utils
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
 - **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
 - **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
-- **历史 /history** `app/history/page.tsx`：仅本人；搜索、分页、URL 同步（共用 `HistoryListView`）。
-- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站 + `userId` 筛选 + 用户名；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
+- **历史 /history** `app/history/page.tsx`：仅本人；`q` 按标题或反馈记录模糊搜索、分页、URL 同步（共用 `HistoryListView`）。
+- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
 - **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
 - **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
 
