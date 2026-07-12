@@ -394,21 +394,15 @@ function HistoryListViewInner({
                         {row.date ?? "—"}
                       </span>
                     </div>
-                    {id != null && (
+                    {showOwnerMeta && (row.username || row.user_id != null) && (
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        编号 {id}
-                        {showOwnerMeta && row.username
-                          ? ` · ${row.username}`
-                          : null}
-                        {showOwnerMeta &&
-                        row.user_id != null &&
-                        !row.username
-                          ? ` · 用户 ${row.user_id}`
-                          : null}
+                        {row.username
+                          ? row.username
+                          : `用户 ${row.user_id}`}
                       </p>
                     )}
                     {id != null && (
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex justify-end">
                         <Button
                           type="button"
                           variant="outline"
