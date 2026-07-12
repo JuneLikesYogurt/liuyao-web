@@ -12,6 +12,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { deleteHistoryItem } from "@/lib/api";
 import { getClientAuthToken } from "@/lib/client-auth-token";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -116,6 +117,7 @@ function HistoryListViewInner({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(qFromUrl);
+  const [actionBusyId, setActionBusyId] = useState<number | null>(null);
 
   const queryKey = useMemo(
     () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}`,
@@ -248,6 +250,35 @@ function HistoryListViewInner({
     [replaceUrl, sizeFromUrl, qFromUrl, totalPages]
   );
 
+  const handleDelete = async (row: HistoryRow) => {
+    const id = row.liuyao_id;
+    if (id == null || actionBusyId != null) return;
+
+    const label = row.title?.trim() || `编号 ${id}`;
+    const ok = window.confirm(`确定删除卦例「${label}」？删除后不可恢复。`);
+    if (!ok) return;
+
+    setActionBusyId(id);
+    setError(null);
+    try {
+      await deleteHistoryItem({ liuyaoId: id });
+      const remainingOnPage = items.length - 1;
+      if (remainingOnPage <= 0 && pageFromUrl > 0) {
+        replaceUrl({
+          page: pageFromUrl - 1,
+          size: sizeFromUrl,
+          q: qFromUrl
+        });
+      } else {
+        await load(pageFromUrl, sizeFromUrl, qFromUrl);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
   const pageJumpItems = useMemo(
     () => buildPageJumpItems(pageFromUrl, totalPages),
     [pageFromUrl, totalPages]
@@ -339,13 +370,26 @@ function HistoryListViewInner({
                   id != null
                     ? `/result?liuyao_id=${encodeURIComponent(String(id))}`
                     : undefined;
+                const busy = id != null && actionBusyId === id;
 
-                const inner = (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">
-                        {row.title?.trim() || "（无标题）"}
-                      </span>
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-col rounded-lg border bg-card/60 p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      {href ? (
+                        <Link
+                          href={href}
+                          className="min-w-0 flex-1 text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                        >
+                          {row.title?.trim() || "（无标题）"}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 flex-1 text-sm font-medium">
+                          {row.title?.trim() || "（无标题）"}
+                        </span>
+                      )}
                       <span className="shrink-0 text-[11px] text-muted-foreground">
                         {row.date ?? "—"}
                       </span>
@@ -363,23 +407,19 @@ function HistoryListViewInner({
                           : null}
                       </p>
                     )}
-                  </>
-                );
-
-                return href ? (
-                  <Link
-                    key={key}
-                    href={href}
-                    className="flex flex-col rounded-lg border bg-card/60 p-3 transition-colors hover:bg-accent/40"
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <div
-                    key={key}
-                    className="flex flex-col rounded-lg border bg-card/60 p-3"
-                  >
-                    {inner}
+                    {id != null && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={loading || actionBusyId != null}
+                          onClick={() => void handleDelete(row)}
+                        >
+                          {busy ? "删除中…" : "删除"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

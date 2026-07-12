@@ -202,6 +202,51 @@ export async function renameHistoryItem(params: {
   }
 }
 
+/** 删除卦例：同源 `/api/history/[id]` → 后端 `DELETE /history/{id}` */
+export async function deleteHistoryItem(params: {
+  liuyaoId: number;
+}): Promise<void> {
+  const { liuyaoId } = params;
+  if (!Number.isFinite(liuyaoId) || liuyaoId <= 0) {
+    throw new Error("卦例编号无效");
+  }
+
+  const token =
+    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+
+  const res = await fetch(`/api/history/${liuyaoId}`, {
+    method: "DELETE",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    let hint = raw.trim().slice(0, 120);
+    try {
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        parsed !== null &&
+        "error" in parsed
+      ) {
+        hint = String((parsed as { error?: unknown }).error ?? hint);
+      }
+    } catch {
+      // keep raw hint
+    }
+    if (res.status === 403) {
+      throw new Error("无权删除该卦例");
+    }
+    if (res.status === 404) {
+      throw new Error("卦例不存在");
+    }
+    throw new Error(hint || `删除失败（${res.status}）`);
+  }
+}
+
 /** 单卦信息。`gua_id` 为自上而下（[0]=上爻，[5]=初爻）；`yao_zhi`/`yao_liuqin` 与 UI 中 `index` 一致（[0]=初爻，[5]=上爻），与 `gua_id` 字符顺序相反，前端对 `gua_id` 单独用下标 `5-index` 对齐。 */
 export interface GuaInfo {
   /** 六位阴阳串：索引 0 = 上爻，索引 5 = 初爻 */

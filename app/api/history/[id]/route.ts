@@ -64,3 +64,31 @@ export async function PATCH(req: Request, context: RouteContext) {
 
   return new Response(null, { status: 204 });
 }
+
+/** 代理后端 `DELETE /history/{liuyaoId}`。 */
+export async function DELETE(req: Request, context: RouteContext) {
+  const { id: rawId } = await context.params;
+  const liuyaoId = parseLiuyaoId(rawId);
+  if (liuyaoId == null) {
+    return Response.json({ error: "invalid_id" }, { status: 400 });
+  }
+
+  const url = `${getBackendBaseUrl()}/history/${liuyaoId}`;
+  const headers = await authHeaders(req);
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers,
+    cache: "no-store"
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    return Response.json(
+      sanitizeUpstreamErrorJson(res.status, text, "delete_history_failed"),
+      { status: res.status }
+    );
+  }
+
+  return new Response(null, { status: 204 });
+}
