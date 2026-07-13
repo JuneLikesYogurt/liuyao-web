@@ -271,7 +271,7 @@ export function BenGuaYongShenClient({
         )}
         <CardDescription className="text-xs">
           {date ?? "—"}
-          {titleEditing ? " · 编辑标题后点下方「保存」" : " · 点击标题可修改"}
+          {titleEditing ? " · 编辑标题后点下方「保存」" : ""}
         </CardDescription>
       </CardHeader>
 
@@ -306,8 +306,8 @@ export function BenGuaYongShenClient({
           data-liuyao-id={liuyaoId}
         >
           <p className="mb-3 text-[11px] text-muted-foreground">
-            点选<strong className="text-foreground">本卦</strong>
-            某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
+            可点选<strong className="text-foreground">本卦</strong>
+            某一爻作为用神。
           </p>
           <ResultPanGrid
             liushouLabels={liushouLabels}

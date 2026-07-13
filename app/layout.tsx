@@ -11,8 +11,8 @@ import {
 } from "@/lib/auth-cookie";
 
 export const metadata: Metadata = {
-  title: "六爻起卦 · 在线占卜",
-  description: "基于六爻的在线起卦与解卦工具"
+  title: "六爻排盘 · 在线占卜",
+  description: "基于六爻的在线起卦与排盘工具"
 };
 
 async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -34,10 +34,10 @@ async function RootLayout({ children }: { children: React.ReactNode }) {
                 </span>
                 <div className="flex flex-col leading-tight">
                   <span className="text-base font-semibold tracking-tight">
-                    六爻起卦
+                    六爻排盘
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    轻量 · 专注 · 多端适配
+                    起卦 · 排盘 · 反馈记录
                   </span>
                 </div>
               </div>
@@ -55,10 +55,10 @@ async function RootLayout({ children }: { children: React.ReactNode }) {
 
           <footer className="border-t bg-background/80 py-4 text-center text-xs text-muted-foreground">
             <div className="container flex flex-col items-center justify-between gap-2 sm:flex-row">
-              <span>© {new Date().getFullYear()} 六爻起卦</span>
-              <span className="text-[11px]">
+              <span>© {new Date().getFullYear()} 六爻排盘</span>
+              {/* <span className="text-[11px]">
                 前端基于 Next.js · TailwindCSS · shadcn/ui
-              </span>
+              </span> */}
             </div>
           </footer>
         </div>

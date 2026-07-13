@@ -309,8 +309,8 @@ function HistoryListViewInner({
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="按标题或反馈记录搜索"
-              aria-label="按标题或反馈记录搜索"
+              placeholder="搜索标题或反馈记录"
+              aria-label="搜索标题或反馈记录"
               className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
             />
             <Button type="submit" variant="outline" size="sm" disabled={loading}>
