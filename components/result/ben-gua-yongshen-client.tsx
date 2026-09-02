@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from "react";
 import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
 import type { GuaYaoRow } from "@/components/result/gua-module";
 import { ResultPanGrid } from "@/components/result/result-pan-grid";
+import { YongshenDayZhiTrend } from "@/components/result/yongshen-day-zhi-trend";
 import { Button } from "@/components/ui/button";
 import {
   CardContent,
@@ -336,6 +337,16 @@ export function BenGuaYongShenClient({
           onCommentChange={setComment}
           onRecalculate={handleRecalculate}
           onSave={handleSave}
+        />
+
+        <YongshenDayZhiTrend
+          liuyaoId={liuyaoId}
+          month={month}
+          day={day}
+          xunkong={xunkong}
+          outcomeYao={outcomeYao}
+          countValue={countValue}
+          calcLoading={calcLoading}
         />
 
         <div className="flex flex-wrap gap-3 pt-2 text-xs">

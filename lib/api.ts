@@ -1,3 +1,5 @@
+import { dizhiIndex, earthlyBranchFromGanzhi, sliceMonthRow } from "@/lib/dizhi";
+
 export interface CastLiuYaoParams {
   title: string;
   date: string;
@@ -92,6 +94,87 @@ export async function fetchCountYongshen(params: {
   }
 
   throw new Error("无法解析用神计数结果");
+}
+
+export interface CountYongshenDayZhiResult {
+  /** 长度 12，`values[0]` = 子（当前月支那一行） */
+  values: number[];
+  month_zhi: string;
+  current_day_zhi: string;
+}
+
+export interface CountYongshenGridResult {
+  /** 长度 144，`values[0]` = 子月子日，下标 = monthIndex * 12 + dayIndex */
+  values: number[];
+  month_zhi: string;
+  current_day_zhi: string;
+}
+
+/** 假数据：月支 × 日支，值落在 [-1, 1]，便于纵轴用 ±1 小刻度。 */
+function mockGrid144(): number[] {
+  const out: number[] = [];
+  for (let m = 0; m < 12; m++) {
+    for (let d = 0; d < 12; d++) {
+      const v = Math.sin((m + 1) * 0.45 + (d + 1) * 0.52) * 0.85;
+      out.push(Math.round(v * 1000) / 1000);
+    }
+  }
+  return out;
+}
+
+/**
+ * 144 月支×日支用神计数。本轮不打 HTTP，延迟后返回假网格；
+ * 本卦月日交叉格写成当前 `countValue`，便于对照反馈区计数。
+ * 后端就绪后改为 `GET /api/result/count-yongshen-grid`。
+ */
+export async function fetchCountYongshenGrid(params: {
+  liuyaoId: string;
+  yongshen: number;
+  countValue: number;
+  month?: string | null;
+  day?: string | null;
+  xunkong?: string | null;
+}): Promise<CountYongshenGridResult> {
+  const { yongshen, countValue, month, day } = params;
+  if (!Number.isFinite(yongshen) || yongshen < 1 || yongshen > 6) {
+    throw new Error("用神爻位无效");
+  }
+
+  void params.liuyaoId;
+  void params.xunkong;
+
+  await new Promise((resolve) => setTimeout(resolve, 320));
+
+  const month_zhi = earthlyBranchFromGanzhi(month) ?? "";
+  const current_day_zhi = earthlyBranchFromGanzhi(day) ?? "";
+  const values = mockGrid144();
+  const monthIdx = dizhiIndex(month_zhi);
+  const dayIdx = dizhiIndex(current_day_zhi);
+  if (monthIdx >= 0 && dayIdx >= 0 && Number.isFinite(countValue)) {
+    values[monthIdx * 12 + dayIdx] = countValue;
+  }
+
+  return { values, month_zhi, current_day_zhi };
+}
+
+/** 当前月支对应的 12 日支，由 144 切片。后端就绪后可改为专用 GET。 */
+export async function fetchCountYongshenDayZhi(params: {
+  liuyaoId: string;
+  yongshen: number;
+  countValue: number;
+  month?: string | null;
+  day?: string | null;
+  xunkong?: string | null;
+}): Promise<CountYongshenDayZhiResult> {
+  const grid = await fetchCountYongshenGrid(params);
+  const monthIdx = dizhiIndex(grid.month_zhi);
+  const values =
+    monthIdx >= 0 ? sliceMonthRow(grid.values, monthIdx) : grid.values.slice(0, 12);
+  return {
+    values,
+    month_zhi: grid.month_zhi,
+    current_day_zhi: grid.current_day_zhi
+  };
 }
 
 export interface YongshenRecord {
