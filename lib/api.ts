@@ -1,4 +1,4 @@
-import { dizhiIndex, earthlyBranchFromGanzhi, sliceMonthRow } from "@/lib/dizhi";
+import { dizhiIndex, sliceMonthRow } from "@/lib/dizhi";
 
 export interface CastLiuYaoParams {
   title: string;
@@ -110,61 +110,83 @@ export interface CountYongshenGridResult {
   current_day_zhi: string;
 }
 
-/** 假数据：月支 × 日支，值落在 [-1, 1]，便于纵轴用 ±1 小刻度。 */
-function mockGrid144(): number[] {
-  const out: number[] = [];
-  for (let m = 0; m < 12; m++) {
-    for (let d = 0; d < 12; d++) {
-      const v = Math.sin((m + 1) * 0.45 + (d + 1) * 0.52) * 0.85;
-      out.push(Math.round(v * 1000) / 1000);
-    }
+export function parseCountYongshenGridPayload(
+  payload: unknown
+): CountYongshenGridResult | null {
+  if (!payload || typeof payload !== "object") return null;
+  const o = payload as Record<string, unknown>;
+  if (!Array.isArray(o.values) || o.values.length !== 144) return null;
+  if (typeof o.month_zhi !== "string" || typeof o.current_day_zhi !== "string") {
+    return null;
   }
-  return out;
+  const values: number[] = [];
+  for (const x of o.values) {
+    if (typeof x !== "number" || !Number.isFinite(x)) return null;
+    values.push(x);
+  }
+  return {
+    values,
+    month_zhi: o.month_zhi,
+    current_day_zhi: o.current_day_zhi
+  };
 }
 
-/**
- * 144 月支×日支用神计数。本轮不打 HTTP，延迟后返回假网格；
- * 本卦月日交叉格写成当前 `countValue`，便于对照反馈区计数。
- * 后端就绪后改为 `GET /api/result/count-yongshen-grid`。
- */
+/** 144 月支×日支：同源 `/api/result/count-yongshen-grid` → 后端 `GET /result/countYongshenGrid` */
 export async function fetchCountYongshenGrid(params: {
   liuyaoId: string;
   yongshen: number;
-  countValue: number;
-  month?: string | null;
-  day?: string | null;
-  xunkong?: string | null;
 }): Promise<CountYongshenGridResult> {
-  const { yongshen, countValue, month, day } = params;
+  const { liuyaoId, yongshen } = params;
   if (!Number.isFinite(yongshen) || yongshen < 1 || yongshen > 6) {
     throw new Error("用神爻位无效");
   }
 
-  void params.liuyaoId;
-  void params.xunkong;
+  const q = new URLSearchParams({
+    liuyao_id: String(liuyaoId),
+    yongshen: String(yongshen)
+  });
 
-  await new Promise((resolve) => setTimeout(resolve, 320));
+  const token =
+    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
 
-  const month_zhi = earthlyBranchFromGanzhi(month) ?? "";
-  const current_day_zhi = earthlyBranchFromGanzhi(day) ?? "";
-  const values = mockGrid144();
-  const monthIdx = dizhiIndex(month_zhi);
-  const dayIdx = dizhiIndex(current_day_zhi);
-  if (monthIdx >= 0 && dayIdx >= 0 && Number.isFinite(countValue)) {
-    values[monthIdx * 12 + dayIdx] = countValue;
+  const res = await fetch(`/api/result/count-yongshen-grid?${q.toString()}`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+
+  const raw = await res.text();
+  let payload: unknown;
+  try {
+    payload = raw ? JSON.parse(raw) : null;
+  } catch {
+    payload = null;
   }
 
-  return { values, month_zhi, current_day_zhi };
+  if (!res.ok) {
+    const fromJson =
+      payload &&
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload
+        ? String((payload as { error?: unknown }).error ?? "")
+        : "";
+    const hint = fromJson || raw.trim().slice(0, 120);
+    throw new Error(hint || `请求失败（${res.status}）`);
+  }
+
+  const parsed = parseCountYongshenGridPayload(payload);
+  if (!parsed) {
+    throw new Error("无法解析月日地支网格");
+  }
+  return parsed;
 }
 
-/** 当前月支对应的 12 日支，由 144 切片。后端就绪后可改为专用 GET。 */
+/** 当前月支对应的 12 日支，由 144 切片。 */
 export async function fetchCountYongshenDayZhi(params: {
   liuyaoId: string;
   yongshen: number;
-  countValue: number;
-  month?: string | null;
-  day?: string | null;
-  xunkong?: string | null;
 }): Promise<CountYongshenDayZhiResult> {
   const grid = await fetchCountYongshenGrid(params);
   const monthIdx = dizhiIndex(grid.month_zhi);

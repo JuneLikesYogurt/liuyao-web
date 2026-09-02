@@ -370,19 +370,13 @@ export function YongshenDayZhiTrend({
     }
 
     const yao = outcomeYao;
-    const cv = countValue;
-    if (cv == null) return;
 
     let cancelled = false;
     setLoading(true);
     setError(null);
     void fetchCountYongshenGrid({
       liuyaoId,
-      yongshen: yao,
-      countValue: cv,
-      month,
-      day,
-      xunkong
+      yongshen: yao
     })
       .then((result) => {
         if (cancelled) return;
