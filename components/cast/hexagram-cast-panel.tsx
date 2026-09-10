@@ -2,6 +2,10 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import {
+  COIN_FLIP_MAX_MS,
+  CopperCoins
+} from "@/components/cast/copper-coins";
 import { LiuYao, type LiuYaoLine } from "@/components/liuyao";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,21 +15,21 @@ import {
   isValidManualCastDatetimeLocal
 } from "@/lib/cast-datetime";
 import {
+  RESTING_COIN_FACES,
   countFilledLines,
   DISPLAY_ROW_INDICES,
   emptyLines,
-  generateOneLine,
   hasAnyLine,
   isLinesComplete,
   LINE_OPTIONS,
   lineIndexForShake,
   linesToResultString,
-  type CastLineSlot
+  tossThreeCoins,
+  type CastLineSlot,
+  type ThreeCoinFaces
 } from "@/lib/liuyao-cast";
 import { yaoWeiLabel } from "@/lib/yao-wei";
 import { cn } from "@/lib/utils";
-
-const SHAKE_ANIMATION_MS = 1200;
 
 type CastMethod = "shake" | "manual";
 
@@ -39,27 +43,18 @@ export interface CastSubmitPayload {
 export interface HexagramCastPanelProps {
   onRequireAuth: () => boolean;
   onSubmit: (payload: CastSubmitPayload) => Promise<void>;
+  onActivity?: () => void;
   submitting: boolean;
 }
 
-function CoinAnimation() {
+const actionPrimaryClass =
+  "h-8 min-w-[4.5rem] rounded-full px-4 text-xs font-medium text-amber-50 shadow-sm hover:bg-amber-500/90 bg-amber-500";
+const actionSecondaryClass = "h-8 min-w-[4.5rem] rounded-full px-4 text-xs font-medium";
+
+function prefersReducedMotion(): boolean {
   return (
-    <div className="flex justify-center gap-4 py-2">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-300 bg-gradient-to-br from-amber-100 via-amber-50 to-amber-200 shadow-sm"
-        >
-          <div
-            className="h-8 w-8 rounded-full border border-amber-500/80 bg-amber-50/80"
-            style={{
-              animation: `spin 0.8s ease-in-out infinite`,
-              animationDelay: `${i * 0.1}s`
-            }}
-          />
-        </div>
-      ))}
-    </div>
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }
 
@@ -68,7 +63,7 @@ function MethodSwitch({
   disabled,
   onChange
 }: {
-  method: CastMethod | null;
+  method: CastMethod;
   disabled: boolean;
   onChange: (m: CastMethod) => void;
 }) {
@@ -107,13 +102,17 @@ function MethodSwitch({
 export function HexagramCastPanel({
   onRequireAuth,
   onSubmit,
+  onActivity,
   submitting
 }: HexagramCastPanelProps) {
-  const [castMethod, setCastMethod] = useState<CastMethod | null>(null);
+  const [castMethod, setCastMethod] = useState<CastMethod>("shake");
   const [shakeLines, setShakeLines] = useState<CastLineSlot[]>(emptyLines);
   const [manualLines, setManualLines] = useState<CastLineSlot[]>(emptyLines);
   const [manualDatetimeLocal, setManualDatetimeLocal] = useState("");
   const [shakePhase, setShakePhase] = useState<ShakePhase>("idle");
+  const [coinFaces, setCoinFaces] =
+    useState<ThreeCoinFaces>(RESTING_COIN_FACES);
+  const [coinSpinId, setCoinSpinId] = useState(0);
   const shakeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shakeCount = countFilledLines(shakeLines);
@@ -124,18 +123,12 @@ export function HexagramCastPanel({
   const manualDateValid = isValidManualCastDatetimeLocal(manualDatetimeLocal);
 
   const canSubmit = useMemo(() => {
-    if (!castMethod) return false;
     if (castMethod === "shake") return isLinesComplete(shakeLines);
     return isLinesComplete(manualLines) && manualDateValid;
   }, [castMethod, manualDateValid, manualLines, shakeLines]);
 
-  const showHexagram =
-    castMethod !== null &&
-    (shakePhase === "shaking" ||
-      (castMethod === "manual" ? manualHasAny : shakeCount > 0));
-
-  const hasProgress =
-    shakeCount > 0 || manualHasAny || manualDatetimeLocal !== "";
+  const shakeHasProgress = shakeCount > 0;
+  const manualHasProgress = manualHasAny || manualDatetimeLocal !== "";
 
   const clearShakeTimer = useCallback(() => {
     if (shakeTimerRef.current) {
@@ -150,51 +143,61 @@ export function HexagramCastPanel({
     setManualLines(emptyLines());
     setManualDatetimeLocal("");
     setShakePhase("idle");
+    setCoinFaces(RESTING_COIN_FACES);
+    setCoinSpinId(0);
   }, [clearShakeTimer]);
 
   const handleMethodChange = useCallback(
     (next: CastMethod) => {
       if (submitting || shakePhase === "shaking") return;
       if (castMethod === next) return;
+      onActivity?.();
       resetContent();
       setCastMethod(next);
       if (next === "manual") {
         setManualDatetimeLocal(dateToDatetimeLocalValue(new Date()));
       }
     },
-    [castMethod, resetContent, shakePhase, submitting]
+    [castMethod, onActivity, resetContent, shakePhase, submitting]
   );
 
   const handleReset = useCallback(() => {
+    onActivity?.();
     resetContent();
     if (castMethod === "manual") {
       setManualDatetimeLocal(dateToDatetimeLocalValue(new Date()));
     }
-  }, [castMethod, resetContent]);
+  }, [castMethod, onActivity, resetContent]);
 
   const handleShake = useCallback(() => {
     if (!onRequireAuth() || castMethod !== "shake") return;
     if (submitting || shakePhase === "shaking" || shakeCount >= 6) return;
 
+    onActivity?.();
+
     const nextK = shakeCount + 1;
-    const pendingLine = generateOneLine();
+    const toss = tossThreeCoins();
     const targetIndex = lineIndexForShake(nextK);
 
+    setCoinFaces(toss.faces);
+    setCoinSpinId((id) => id + 1);
     setShakePhase("shaking");
     clearShakeTimer();
 
+    const delayMs = prefersReducedMotion() ? 0 : COIN_FLIP_MAX_MS;
     shakeTimerRef.current = setTimeout(() => {
       setShakeLines((prev) => {
         const next = [...prev];
-        next[targetIndex] = pendingLine;
+        next[targetIndex] = toss.line;
         return next;
       });
       setShakePhase("idle");
       shakeTimerRef.current = null;
-    }, SHAKE_ANIMATION_MS);
+    }, delayMs);
   }, [
     castMethod,
     clearShakeTimer,
+    onActivity,
     onRequireAuth,
     shakeCount,
     shakePhase,
@@ -212,7 +215,7 @@ export function HexagramCastPanel({
   }, []);
 
   const handlePan = useCallback(async () => {
-    if (!onRequireAuth() || submitting || !canSubmit || !castMethod) return;
+    if (!onRequireAuth() || submitting || !canSubmit) return;
 
     const lines = castMethod === "manual" ? manualLines : shakeLines;
     const result = linesToResultString(lines);
@@ -254,37 +257,14 @@ export function HexagramCastPanel({
 
       {castMethod === "shake" && (
         <div className="grid gap-3">
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button
-              size="lg"
-              className="min-w-[120px] rounded-full bg-amber-500 text-sm font-medium tracking-[0.25em] text-amber-50 shadow-sm hover:bg-amber-500/90"
-              onClick={handleShake}
-              disabled={
-                submitting || shakePhase === "shaking" || shakeCount >= 6
-              }
-            >
-              {shakeButtonLabel}
-            </Button>
-            {hasProgress && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full px-4 text-xs"
-                onClick={handleReset}
-                disabled={submitting || shakePhase === "shaking"}
-              >
-                重来
-              </Button>
-            )}
-          </div>
+          <CopperCoins faces={coinFaces} spinId={coinSpinId} />
 
-          {shakePhase === "shaking" && <CoinAnimation />}
-
-          {shakePhase === "shaking" && (
-            <p className="text-center text-xs text-muted-foreground">
-              {progressYaoPos}/6
-            </p>
-          )}
+          <p
+            className="text-center text-xs tabular-nums text-muted-foreground"
+            aria-live="polite"
+          >
+            {progressYaoPos}/6
+          </p>
         </div>
       )}
 
@@ -333,38 +313,71 @@ export function HexagramCastPanel({
               </div>
             );
           })}
-          {hasProgress && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-self-center text-xs text-muted-foreground"
-              onClick={handleReset}
-              disabled={submitting}
-            >
-              重来
-            </Button>
-          )}
         </div>
       )}
 
-      {showHexagram && (
-        <LiuYao
-          lines={displayLines}
-          className="border-amber-100 bg-amber-50/40"
-        />
+      <LiuYao
+        lines={displayLines}
+        className="border-amber-100 bg-amber-50/40"
+      />
+
+      {castMethod === "shake" && (
+        <div className="grid grid-cols-3 justify-self-center gap-2">
+          <Button
+            size="sm"
+            className={actionPrimaryClass}
+            onClick={handleShake}
+            disabled={
+              submitting || shakePhase === "shaking" || shakeCount >= 6
+            }
+          >
+            {shakeButtonLabel}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={actionSecondaryClass}
+            onClick={handleReset}
+            disabled={
+              submitting || shakePhase === "shaking" || !shakeHasProgress
+            }
+          >
+            重来
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={actionSecondaryClass}
+            onClick={handlePan}
+            disabled={!canSubmit || submitting}
+          >
+            {submitting ? "排盘中…" : "排盘"}
+          </Button>
+        </div>
       )}
 
-      <div className="flex justify-center pt-1">
-        <Button
-          variant="outline"
-          size="sm"
-          className="rounded-full px-8 text-xs"
-          onClick={handlePan}
-          disabled={!canSubmit || submitting || castMethod === null}
-        >
-          {submitting ? "排盘中…" : "排盘"}
-        </Button>
-      </div>
+      {castMethod === "manual" && (
+        <div className="grid grid-cols-2 justify-self-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className={actionSecondaryClass}
+            onClick={handleReset}
+            disabled={submitting || !manualHasProgress}
+          >
+            重来
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={actionSecondaryClass}
+            onClick={handlePan}
+            disabled={!canSubmit || submitting}
+          >
+            {submitting ? "排盘中…" : "排盘"}
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

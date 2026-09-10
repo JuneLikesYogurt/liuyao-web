@@ -104,6 +104,7 @@ lib/                 # api 封装、utils
 ### 首页摇卦线 `LiuYaoLine`
 
 - `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自上而下绘制。第 `k` 次摇卦写入 `lines[6-k]`；提交时 `linesToResultString` 按 `lines[0]…lines[5]` 直接拼接，**上爻在前**，与后端 `yaoguaRes` / `gua_id` 一致。
+- **摇卦**每次掷三枚铜钱（字=阴=2，背=阳=3，和 6–9 对应 0–3），画面字背即该爻来源；**手动录入**仍直接选四象，不经硬币。
 
 ### 用户（后端）
 
@@ -144,14 +145,14 @@ lib/                 # api 封装、utils
 
 ### 页面概览
 
-- **布局** `app/layout.tsx`：全局样式、顶栏导航、页脚。
+- **布局** `app/layout.tsx`：全局样式、顶栏品牌 + `SiteMenu`（账号名 + 图标；右侧滑出起卦 / 历史 / 登出；ADMIN 另有管理；无结果入口）、页脚。
 - **路由守卫** `middleware.ts`：未登录重定向登录；已登录访问 `/login` 时离开登录页。
 - **登录 /login** `app/login/page.tsx`：鉴权、token 落盘与回跳。
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
-- **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
-- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`；点击标题可编辑，反馈区「保存」一并提交标题（`PATCH /history/{id}`）与反馈。
+- **首页 /** `app/page.tsx`：默认摇卦，可改手动录入；可选标题、排盘、`LiuYao` 预览。
+- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`；点击标题可编辑，反馈区「保存」一并提交标题（`PATCH /history/{id}`）与反馈。无顶栏入口，排盘成功跳转或从历史进入。
 - **历史 /history** `app/history/page.tsx`：仅本人；`q` 按标题或反馈记录模糊搜索、分页、URL 同步；可删除本人卦例（共用 `HistoryListView`）。
-- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；可删除任意卦例；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
+- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；可删除任意卦例；顶栏 `SiteMenu` 仅 ADMIN 显示「管理」。
 - **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
 - **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/history/[id]/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`、`app/api/result/count-yongshen-grid/route.ts`。
 
