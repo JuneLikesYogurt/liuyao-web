@@ -20,3 +20,4 @@ node_modules
 # 测试/日志（按需）
 coverage/
 *.log
+.qa/
