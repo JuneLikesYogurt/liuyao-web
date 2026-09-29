@@ -5,7 +5,6 @@ import { useMemo, useRef, useState } from "react";
 import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
 import type { GuaYaoRow } from "@/components/result/gua-module";
 import { ResultPanGrid } from "@/components/result/result-pan-grid";
-import { Button } from "@/components/ui/button";
 import {
   fetchCountYongshen,
   saveResultFeedback,
@@ -184,11 +183,11 @@ export function BenGuaYongShenClient({
   return (
     <>
       <section
-        className="overflow-x-auto rounded-xl bg-white/90 p-4 shadow-sm sm:p-5"
+        className="real-pan__sheet"
         data-liuyao-id={liuyaoId}
       >
-        <p className="mb-3 text-[11px] text-muted-foreground">
-          点选<strong className="text-foreground">本卦</strong>
+        <p className="real-pan__hint">
+          点选<strong>本卦</strong>
           某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
         </p>
         <ResultPanGrid
@@ -221,38 +220,34 @@ export function BenGuaYongShenClient({
       />
 
       {confirmOpen && selectedYao != null && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40"
-            aria-hidden
-            onClick={handleConfirmCancel}
-          />
-          <div
-            className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,22rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-card p-4 text-sm shadow-lg"
+        <div className="ritual-dialog-layer" onClick={handleConfirmCancel}>
+          <section
+            className="ritual-dialog real-confirm-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="yongshen-confirm-title"
+            onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="yongshen-confirm-title" className="font-medium text-foreground">
-              确认用神
-            </h2>
-            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            <span className="ritual-dialog__seal" aria-hidden="true">定</span>
+            <p className="page-kicker">观爻取用</p>
+            <h2 id="yongshen-confirm-title">确认用神</h2>
+            <p>
               是否以「{yaoWeiLabel(selectedYao)} · {dialogLiuqin}」为用神进行计算？
             </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={handleConfirmCancel}>
+            <div className="ritual-dialog__actions">
+              <button className="button button--ghost" type="button" onClick={handleConfirmCancel}>
                 取消
-              </Button>
-              <Button
+              </button>
+              <button className="button button--ink"
                 type="button"
                 disabled={calcLoading}
                 onClick={() => void handleConfirmOk()}
               >
                 确认
-              </Button>
+              </button>
             </div>
-          </div>
-        </>
+          </section>
+        </div>
       )}
     </>
   );

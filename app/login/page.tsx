@@ -5,14 +5,7 @@ import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { BrandMark } from "@/components/brand-mark";
 
 import { writeClientSessionCookies } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
@@ -81,18 +74,17 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
-      <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl">登录</CardTitle>
-          <CardDescription>输入账号密码后完成登录并进入起卦页。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="identifier" className="block text-sm font-medium text-slate-800">
-                账号（用户名/邮箱）
-              </label>
+    <div className="page auth-page">
+      <section className="auth-folio" aria-labelledby="login-title">
+        <div className="auth-folio__brand">
+          <BrandMark ritual />
+          <p className="page-kicker">三枚钱 · 六次掷</p>
+          <h1 id="login-title">登录</h1>
+          <p>归来，再问一卦</p>
+        </div>
+        <form onSubmit={handleSubmit} className="auth-form">
+            <label className="field-wrap" htmlFor="identifier">
+              <span className="field-label">账号（用户名 / 邮箱）</span>
               <input
                 id="identifier"
                 type="text"
@@ -101,15 +93,13 @@ function LoginForm() {
                 required
                 minLength={2}
                 maxLength={64}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                className="field"
                 placeholder="请输入账号"
               />
-            </div>
+            </label>
 
-            <div className="space-y-2">
-              <label htmlFor="password" className="block text-sm font-medium text-slate-800">
-                密码
-              </label>
+            <label className="field-wrap" htmlFor="password">
+              <span className="field-label">密码</span>
               <input
                 id="password"
                 type="password"
@@ -118,22 +108,18 @@ function LoginForm() {
                 required
                 minLength={6}
                 maxLength={128}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                className="field"
                 placeholder="请输入密码（至少 6 位）"
               />
-            </div>
+            </label>
 
-            <Button type="submit" disabled={loading} className="w-full">
+            {error && <p className="auth-message auth-message--error" role="alert">{error}</p>}
+            <button type="submit" disabled={loading} className="button button--ink auth-submit">
               {loading ? "登录中..." : "登录"}
-            </Button>
-            <Button type="button" variant="outline" className="w-full" asChild>
-              <Link href="/register">去注册</Link>
-            </Button>
-          </form>
-
-          {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-        </CardContent>
-      </Card>
+            </button>
+            <p className="auth-switch">还没有账号？<Link href="/register">创建一页新册</Link></p>
+        </form>
+      </section>
     </div>
   );
 }
@@ -142,13 +128,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
-          <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-xl">登录</CardTitle>
-              <CardDescription>加载中…</CardDescription>
-            </CardHeader>
-          </Card>
+        <div className="page auth-page">
+          <div className="auth-folio auth-folio--loading">正在展开册页…</div>
         </div>
       }
     >

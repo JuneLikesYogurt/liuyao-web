@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { usePathname, useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 
 import { clearClientSessionCookies } from "@/lib/auth-cookie";
 import { setClientUserRole } from "@/lib/client-user-role";
@@ -32,13 +32,12 @@ export function AuthHeader() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="hidden max-w-[9rem] truncate text-xs text-muted-foreground sm:inline">
-        {userLabel ? `已登录：${userLabel}` : "已登录"}
-      </span>
-      <Button type="button" size="sm" variant="outline" onClick={handleLogout}>
-        登出
-      </Button>
+    <div className="top-nav__user">
+      <span className="avatar">{userLabel?.trim().slice(0, 1) || "人"}</span>
+      <span>{userLabel || "已登录"}</span>
+      <button className="icon-button" type="button" onClick={handleLogout} aria-label="退出登录">
+        <LogOut className="icon" aria-hidden="true" />
+      </button>
     </div>
   );
 }

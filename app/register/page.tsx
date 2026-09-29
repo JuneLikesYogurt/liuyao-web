@@ -3,14 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
+import { BrandMark } from "@/components/brand-mark";
 
 interface RegisterResponse {
   error?: string;
@@ -59,19 +52,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <>
-      <div className="flex flex-1 items-center justify-center py-6 sm:py-10">
-        <Card className="w-full max-w-md border-slate-200/80 bg-white/95 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl">注册</CardTitle>
-            <CardDescription>创建账号后返回登录页继续使用。</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="username" className="block text-sm font-medium text-slate-800">
-                  用户名
-                </label>
+    <div className="page auth-page">
+      <section className="auth-folio" aria-labelledby="register-title">
+        <div className="auth-folio__brand">
+          <BrandMark ritual />
+          <p className="page-kicker">新客题名</p>
+          <h1 id="register-title">注册</h1>
+          <p>为每一卦，留一页可回看的记录</p>
+        </div>
+            <form onSubmit={handleSubmit} className="auth-form">
+              <label className="field-wrap" htmlFor="username">
+                <span className="field-label">用户名</span>
                 <input
                   id="username"
                   type="text"
@@ -80,15 +71,13 @@ export default function RegisterPage() {
                   required
                   minLength={2}
                   maxLength={64}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                  className="field"
                   placeholder="请输入用户名"
                 />
-              </div>
+              </label>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-slate-800">
-                  密码
-                </label>
+              <label className="field-wrap" htmlFor="password">
+                <span className="field-label">密码</span>
                 <input
                   id="password"
                   type="password"
@@ -97,43 +86,34 @@ export default function RegisterPage() {
                   required
                   minLength={6}
                   maxLength={128}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                  className="field"
                   placeholder="请输入密码（至少 6 位）"
                 />
-              </div>
+              </label>
 
-              <Button type="submit" disabled={loading} className="w-full">
+              {error && <p className="auth-message auth-message--error" role="alert">{error}</p>}
+              <button type="submit" disabled={loading} className="button button--ink auth-submit">
                 {loading ? "提交中..." : "注册"}
-              </Button>
+              </button>
+              <p className="auth-switch">已有账号？<Link href="/login">返回登录</Link></p>
             </form>
-
-            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-          </CardContent>
-        </Card>
-      </div>
+      </section>
 
       {success && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+        <div className="ritual-dialog-layer"
           role="dialog"
           aria-modal="true"
           aria-labelledby="register-success-title"
         >
-          <Card className="w-full max-w-sm border-slate-200/80 bg-white shadow-lg">
-            <CardHeader>
-              <CardTitle id="register-success-title" className="text-lg">
-                注册成功
-              </CardTitle>
-              <CardDescription>请返回登录页完成登录。</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button type="button" className="w-full" asChild>
-                <Link href="/login">返回登录</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <section className="ritual-dialog">
+            <span className="ritual-dialog__seal" aria-hidden="true">成</span>
+            <p className="page-kicker">题名已录</p>
+            <h2 id="register-success-title">注册成功</h2>
+            <p>请返回登录页，继续完成登录。</p>
+            <div className="ritual-dialog__actions"><Link className="button button--ink" href="/login">返回登录</Link></div>
+          </section>
         </div>
       )}
-    </>
+    </div>
   );
 }
