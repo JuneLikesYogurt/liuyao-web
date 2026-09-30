@@ -2,6 +2,22 @@ const READING_KEY = "guanyao-ui-latest-reading-v1";
 const DRAFT_KEY = "guanyao-ui-draft-v1";
 const SERVER_ID_KEY = "guanyao-ui-latest-server-id";
 
+function readAuthToken() {
+  const match = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("token="));
+  if (match) {
+    const raw = match.slice("token=".length);
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+  return localStorage.getItem("token");
+}
+
 function readCompletedCast() {
   try {
     const latest = JSON.parse(localStorage.getItem(READING_KEY) || "null");
@@ -31,7 +47,7 @@ function normalizeCastDate(value) {
 async function persistCast() {
   const reading = readCompletedCast();
   if (!reading) throw new Error("尚未取得完整六爻");
-  const token = localStorage.getItem("token");
+  const token = readAuthToken();
   if (!token) {
     top.location.assign("/login?next=%2F");
     return null;

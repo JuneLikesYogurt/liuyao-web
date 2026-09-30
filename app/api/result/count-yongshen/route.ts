@@ -1,5 +1,8 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
 import {
+  sessionAuthHeaders
+} from "@/lib/forward-session-auth";
+import {
   proxyMalformedUpstreamBody,
   sanitizeUpstreamErrorJson
 } from "@/lib/proxy-upstream-error";
@@ -23,10 +26,7 @@ export async function GET(req: Request) {
     id
   )}&yongshen=${encodeURIComponent(yongshen)}`;
 
-  const authHeader = req.headers.get("authorization");
-  const headers = new Headers();
-  if (authHeader) headers.set("Authorization", authHeader);
-
+  const headers = await sessionAuthHeaders(req);
   const res = await fetch(url, { cache: "no-store", headers });
   const text = await res.text();
 

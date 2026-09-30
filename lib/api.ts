@@ -1,4 +1,4 @@
-import { dizhiIndex, sliceMonthRow } from "@/lib/dizhi";
+import { getClientAuthToken } from "@/lib/client-auth-token";
 
 export interface CastLiuYaoParams {
   title: string;
@@ -14,8 +14,7 @@ export async function castLiuYao(
   params: CastLiuYaoParams
 ): Promise<CastLiuYaoResult> {
   // Use same-origin proxy to avoid browser CORS issues.
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+  const token = getClientAuthToken();
 
   const res = await fetch("/api/cast", {
     method: "POST",
@@ -52,8 +51,7 @@ export async function fetchCountYongshen(params: {
     yongshen: String(yongshen)
   });
 
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+  const token = getClientAuthToken();
 
   const res = await fetch(`/api/result/count-yongshen?${q.toString()}`, {
     method: "GET",
@@ -94,13 +92,6 @@ export async function fetchCountYongshen(params: {
   }
 
   throw new Error("无法解析用神计数结果");
-}
-
-export interface CountYongshenDayZhiResult {
-  /** 长度 12，`values[0]` = 子（当前月支那一行） */
-  values: number[];
-  month_zhi: string;
-  current_day_zhi: string;
 }
 
 export interface CountYongshenGridResult {
@@ -146,8 +137,7 @@ export async function fetchCountYongshenGrid(params: {
     yongshen: String(yongshen)
   });
 
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+  const token = getClientAuthToken();
 
   const res = await fetch(`/api/result/count-yongshen-grid?${q.toString()}`, {
     method: "GET",
@@ -183,22 +173,6 @@ export async function fetchCountYongshenGrid(params: {
   return parsed;
 }
 
-/** 当前月支对应的 12 日支，由 144 切片。 */
-export async function fetchCountYongshenDayZhi(params: {
-  liuyaoId: string;
-  yongshen: number;
-}): Promise<CountYongshenDayZhiResult> {
-  const grid = await fetchCountYongshenGrid(params);
-  const monthIdx = dizhiIndex(grid.month_zhi);
-  const values =
-    monthIdx >= 0 ? sliceMonthRow(grid.values, monthIdx) : grid.values.slice(0, 12);
-  return {
-    values,
-    month_zhi: grid.month_zhi,
-    current_day_zhi: grid.current_day_zhi
-  };
-}
-
 export interface YongshenRecord {
   yongshen: number;
   count_value: number;
@@ -218,8 +192,7 @@ export async function saveResultFeedback(params: {
     throw new Error("用神爻位无效");
   }
 
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
+  const token = getClientAuthToken();
 
   const res = await fetch("/api/result/feedback", {
     method: "PUT",
@@ -252,103 +225,6 @@ export async function saveResultFeedback(params: {
       // keep raw hint
     }
     throw new Error(hint || `保存失败（${res.status}）`);
-  }
-}
-
-/** 重命名卦例：同源 `/api/history/[id]` → 后端 `PATCH /history/{id}` */
-export async function renameHistoryItem(params: {
-  liuyaoId: number;
-  title: string;
-}): Promise<void> {
-  const { liuyaoId, title } = params;
-  if (!Number.isFinite(liuyaoId) || liuyaoId <= 0) {
-    throw new Error("卦例编号无效");
-  }
-  const trimmed = title.trim();
-  if (!trimmed) {
-    throw new Error("标题不能为空");
-  }
-
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-
-  const res = await fetch(`/api/history/${liuyaoId}`, {
-    method: "PATCH",
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
-    body: JSON.stringify({ title: trimmed })
-  });
-
-  if (!res.ok) {
-    const raw = await res.text();
-    let hint = raw.trim().slice(0, 120);
-    try {
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        parsed !== null &&
-        "error" in parsed
-      ) {
-        hint = String((parsed as { error?: unknown }).error ?? hint);
-      }
-    } catch {
-      // keep raw hint
-    }
-    if (res.status === 403) {
-      throw new Error("无权重命名该卦例");
-    }
-    if (res.status === 404) {
-      throw new Error("卦例不存在");
-    }
-    throw new Error(hint || `重命名失败（${res.status}）`);
-  }
-}
-
-/** 删除卦例：同源 `/api/history/[id]` → 后端 `DELETE /history/{id}` */
-export async function deleteHistoryItem(params: {
-  liuyaoId: number;
-}): Promise<void> {
-  const { liuyaoId } = params;
-  if (!Number.isFinite(liuyaoId) || liuyaoId <= 0) {
-    throw new Error("卦例编号无效");
-  }
-
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("token") : null;
-
-  const res = await fetch(`/api/history/${liuyaoId}`, {
-    method: "DELETE",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    }
-  });
-
-  if (!res.ok) {
-    const raw = await res.text();
-    let hint = raw.trim().slice(0, 120);
-    try {
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (
-        parsed &&
-        typeof parsed === "object" &&
-        parsed !== null &&
-        "error" in parsed
-      ) {
-        hint = String((parsed as { error?: unknown }).error ?? hint);
-      }
-    } catch {
-      // keep raw hint
-    }
-    if (res.status === 403) {
-      throw new Error("无权删除该卦例");
-    }
-    if (res.status === 404) {
-      throw new Error("卦例不存在");
-    }
-    throw new Error(hint || `删除失败（${res.status}）`);
   }
 }
 

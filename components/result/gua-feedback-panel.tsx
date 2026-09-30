@@ -1,5 +1,8 @@
 "use client";
 
+import { useLayoutEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+
 import { yaoWeiLabel } from "@/lib/yao-wei";
 
 export function GuaFeedbackPanel({
@@ -34,10 +37,13 @@ export function GuaFeedbackPanel({
   const showYongshenSection = yongshen != null;
 
   return (
-    <section className="real-feedback" id="feedback-panel">
-      <div className="real-feedback__head">
-        <p className="page-kicker">回看留记</p>
-        <h2>本卦反馈</h2>
+    <FeedbackSlot>
+    <section className="detail-section real-feedback" id="feedback">
+      <div className="detail-section__head">
+        <div>
+          <p className="page-kicker">回看留记</p>
+          <h2 className="section-title">本卦反馈</h2>
+        </div>
       </div>
 
       <div className="real-feedback__body">
@@ -132,5 +138,17 @@ export function GuaFeedbackPanel({
         </button>
       </div>
     </section>
+    </FeedbackSlot>
   );
+}
+
+function FeedbackSlot({ children }: { children: ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    setSlot(document.getElementById("yongshen-feedback-slot"));
+  }, []);
+
+  if (!slot) return null;
+  return createPortal(children, slot);
 }

@@ -1,4 +1,7 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import {
+  sessionAuthHeaders
+} from "@/lib/forward-session-auth";
 import { sanitizeUpstreamErrorJson } from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
@@ -14,10 +17,8 @@ export async function PUT(req: Request) {
 
   const url = `${getBackendBaseUrl()}/result/feedback`;
 
-  const authHeader = req.headers.get("authorization");
-  const headers = new Headers({ "content-type": "application/json" });
-  if (authHeader) headers.set("Authorization", authHeader);
-
+  const headers = await sessionAuthHeaders(req);
+  headers.set("content-type", "application/json");
   const res = await fetch(url, {
     method: "PUT",
     headers,

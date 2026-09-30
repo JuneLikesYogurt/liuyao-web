@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
 import type { GuaYaoRow } from "@/components/result/gua-module";
@@ -11,6 +11,7 @@ import {
   type YongshenRecord
 } from "@/lib/api";
 import { yaoWeiLabel } from "@/lib/yao-wei";
+import { useYongshenTrendSelection } from "@/components/result/yongshen-trend-context";
 
 type MovingRow = {
   isMoving: boolean;
@@ -68,6 +69,15 @@ export function BenGuaYongShenClient({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const confirmSubmitLock = useRef(false);
+  const { setSelection } = useYongshenTrendSelection();
+
+  useEffect(() => {
+    setSelection({
+      yao: outcomeYao,
+      countValue,
+      calcLoading
+    });
+  }, [outcomeYao, countValue, calcLoading, setSelection]);
 
   const liuqinForYao = (yaoPos: number) =>
     benLines.find((r) => r.yaoPos === yaoPos)?.liuqin ?? "—";
@@ -188,7 +198,7 @@ export function BenGuaYongShenClient({
       >
         <p className="real-pan__hint">
           点选<strong>本卦</strong>
-          某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。下方可填写应验与反馈记录。
+          某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。右侧可填写应验与反馈。
         </p>
         <ResultPanGrid
           liushouLabels={liushouLabels}

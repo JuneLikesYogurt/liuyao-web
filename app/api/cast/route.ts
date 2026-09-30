@@ -1,4 +1,5 @@
 import { getBackendBaseUrl } from "@/lib/backend-base-url";
+import { sessionAuthHeaders } from "@/lib/forward-session-auth";
 import { proxyMalformedUpstreamBody } from "@/lib/proxy-upstream-error";
 
 export const runtime = "nodejs";
@@ -31,11 +32,7 @@ export async function POST(req: Request) {
   url.searchParams.set("date", body.date ?? "");
   url.searchParams.set("result", body.result ?? "");
 
-  // Forward auth header (e.g. `Authorization: Bearer <token>`) to Spring.
-  // Frontend should pass it to this Next route; we proxy it to the backend.
-  const authHeader = req.headers.get("authorization");
-  const headers = new Headers();
-  if (authHeader) headers.set("Authorization", authHeader);
+  const headers = await sessionAuthHeaders(req);
 
   const res = await fetch(url.toString(), { method: "POST", headers });
   const text = await res.text();
