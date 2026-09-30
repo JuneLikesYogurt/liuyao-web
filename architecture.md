@@ -38,7 +38,11 @@
 | 起卦入库 | Spring：`POST /?title&date&result`（**仅 query**，需 JWT） | 浏览器：`POST /api/cast`，**JSON body** `{ title, date, result }`；Route 读 JSON 后拼 query 调 Spring；`Authorization` 透传（见 `castLiuYao` / `app/api/cast/route.ts`） |
 | 卦象详情 | `GET /result?liuyao_id=`（需 JWT，仅记录所属用户） | `GET /api/result`；Route 与 `getLiuYaoDetail` 转发 **`Authorization: Bearer`**（服务端由 **`token` cookie** 注入） |
 | 用神计数 | `GET /result/countYongshen`（需 JWT，仅记录所属用户） | `GET /api/result/count-yongshen` → `{ value }`；浏览器经 `fetchCountYongshen` 带 Bearer |
+| 用神 · 十二日支 | `GET /result/countYongshenDayZhi`（需 JWT） | 12 点切片；折线由 144 切当前（或所选）月支 |
+| 用神 · 月日网格 | `GET /result/countYongshenGrid`（需 JWT） | `GET /api/result/count-yongshen-grid` → `fetchCountYongshenGrid`；结果页「展开全盘」12×12 |
 | 历史（本人） | `GET /history`（需 JWT；`q`、`page`/`size`） | `/api/history` |
+| 历史 · 重命名 | `PATCH /history/{id}`（本人或 ADMIN；结果页「保存」触发） | `/api/history/[id]` |
+| 历史 · 删除 | `DELETE /history/{id}`（本人或 ADMIN） | `/api/history/[id]` |
 | 管理 · 全站历史 | `GET /admin/history`（需 ADMIN） | `/api/admin/history` |
 
 鉴权、字段、`GuaDetailDto` 爻位下标、用神 `yongshen` 1～6 等**完整说明**见 **[liuyao_back/architecture.md](../liuyao_back/architecture.md)**，此处不重复维护。
@@ -71,7 +75,7 @@ lib/                 # api 封装、utils
 | 模块 | 路径 | 职责 |
 |------|------|------|
 | 起卦与提交 | `app/page.tsx`、`components/cast/hexagram-cast-panel.tsx`、`lib/liuyao-cast.ts` | 六次逐爻摇卦 / 手动录入、`castLiuYao` |
-| 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；**规划中**：爻位点选用神、确认、调用用神接口、下方结果区 |
+| 结果展示 | `app/result/page.tsx`、`components/result/*` | `getLiuYaoDetail`、本卦/变卦/动爻 UI；点选用神、计数与反馈；折叠区月日地支趋势（折线 / 12×12） |
 | API 代理 | `app/api/cast/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts` 等 | 转发到 Spring，**转发 Authorization**；**错误体**经 [`lib/proxy-upstream-error.ts`](lib/proxy-upstream-error.ts) 脱敏（生产不附带上游原文，开发可带 `debugSnippet`） |
 | HTTP 客户端 | `lib/api.ts` | `castLiuYao`、`fetchCountYongshen`（Bearer）、`getLiuYaoDetail`（cookie→Bearer）、类型定义 |
 
@@ -100,6 +104,7 @@ lib/                 # api 封装、utils
 ### 首页摇卦线 `LiuYaoLine`
 
 - `0|1|2|3`：太阴 / 少阳 / 少阴 / 太阳；`lines[0]` 为 **上爻**；组件内自上而下绘制。第 `k` 次摇卦写入 `lines[6-k]`；提交时 `linesToResultString` 按 `lines[0]…lines[5]` 直接拼接，**上爻在前**，与后端 `yaoguaRes` / `gua_id` 一致。
+- **摇卦**每次掷三枚铜钱（字=阴=2，背=阳=3，和 6–9 对应 0–3），画面字背即该爻来源；**手动录入**仍直接选四象，不经硬币。
 
 ### 用户（后端）
 
@@ -140,22 +145,23 @@ lib/                 # api 封装、utils
 
 ### 页面概览
 
-- **布局** `app/layout.tsx`：全局样式、顶栏导航、页脚。
+- **布局** `app/layout.tsx`：全局样式、顶栏品牌 + `SiteMenu`（账号名 + 图标；右侧滑出起卦 / 历史 / 登出；ADMIN 另有管理；无结果入口）、页脚。
 - **路由守卫** `middleware.ts`：未登录重定向登录；已登录访问 `/login` 时离开登录页。
 - **登录 /login** `app/login/page.tsx`：鉴权、token 落盘与回跳。
 - **注册 /register** `app/register/page.tsx`：注册表单；与登录页互链。
-- **首页 /** `app/page.tsx`：六次摇卦或手动录入、可选标题、排盘、`LiuYao` 预览。
-- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`。
-- **历史 /history** `app/history/page.tsx`：仅本人；搜索、分页、URL 同步（共用 `HistoryListView`）。
-- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站 + `userId` 筛选 + 用户名；顶栏 `SiteNav` 仅 ADMIN 显示「管理」。
+- **首页 /** `app/page.tsx`：默认摇卦，可改手动录入；可选标题、排盘、`LiuYao` 预览。
+- **结果 /result** `app/result/page.tsx`：`searchParams.liuyao_id`，`getLiuYaoDetail`；点击标题可编辑，反馈区「保存」一并提交标题（`PATCH /history/{id}`）与反馈。无顶栏入口，排盘成功跳转或从历史进入。
+- **历史 /history** `app/history/page.tsx`：仅本人；`q` 按标题或反馈记录模糊搜索、分页、URL 同步；可删除本人卦例（共用 `HistoryListView`）。
+- **管理 /admin/history** `app/admin/history/page.tsx`：ADMIN 全站列表（含归属用户名）；`q` 按标题或反馈记录模糊搜索；可删除任意卦例；顶栏 `SiteMenu` 仅 ADMIN 显示「管理」。
 - **登录 /login**：登录响应 `role` 写入 `localStorage`（`user_role`）。
-- **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`。
+- **API Route**：`app/api/cast/route.ts`、`app/api/history/route.ts`、`app/api/history/[id]/route.ts`、`app/api/admin/history/route.ts`、`app/api/result/route.ts`、`app/api/result/count-yongshen/route.ts`、`app/api/result/count-yongshen-grid/route.ts`。
 
 ### 调用链摘要
 
 - 起卦：`castLiuYao` → **`POST /api/cast`**（JSON body）→ **`POST /?...`**（query，带 Bearer）。
 - 结果：`getLiuYaoDetail` → **`GET /api/result?liuyao_id=`**（cookie `token` → `Authorization: Bearer`）→ 后端 `GET /result`。
 - 用神计数（浏览器）：`fetchCountYongshen`（localStorage `token` → Bearer）→ **`GET /api/result/count-yongshen`** → 后端 `GET /result/countYongshen`。
+- 月日地支趋势（浏览器）：`fetchCountYongshenGrid` → **`GET /api/result/count-yongshen-grid`** → 后端 `GET /result/countYongshenGrid`（144）；折线为所选月支一行，热力图为全盘。
 
 ### 已知改进方向（非阻塞）
 

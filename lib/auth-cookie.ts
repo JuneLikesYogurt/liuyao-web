@@ -54,7 +54,7 @@ export function writeClientSessionCookies(token: string, role: string): void {
   if (typeof window === "undefined") return;
   const suffix = authCookieSuffix();
   const normalizedRole = role.trim() || "USER";
-  document.cookie = `${TOKEN_COOKIE}=${token}; max-age=${TOKEN_MAX_AGE_SEC}; ${suffix}`;
+  document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; max-age=${TOKEN_MAX_AGE_SEC}; ${suffix}`;
   document.cookie = `${USER_ROLE_COOKIE}=${encodeURIComponent(normalizedRole)}; max-age=${TOKEN_MAX_AGE_SEC}; ${suffix}`;
 }
 

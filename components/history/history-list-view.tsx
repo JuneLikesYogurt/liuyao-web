@@ -12,6 +12,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { deleteHistoryItem } from "@/lib/api";
 import { getClientAuthToken } from "@/lib/client-auth-token";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -39,7 +40,6 @@ export interface HistoryListViewProps {
   title: string;
   description: string;
   loginNext: string;
-  showUserFilter?: boolean;
   showOwnerMeta?: boolean;
 }
 
@@ -54,14 +54,6 @@ function parseSize(value: string | null): number {
   return PAGE_SIZE_OPTIONS.includes(n as (typeof PAGE_SIZE_OPTIONS)[number])
     ? n
     : DEFAULT_PAGE_SIZE;
-}
-
-function parseUserId(value: string | null): string {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const n = Number.parseInt(trimmed, 10);
-  return Number.isFinite(n) && n > 0 ? String(n) : "";
 }
 
 function buildPageJumpItems(
@@ -110,7 +102,6 @@ function HistoryListViewInner({
   title,
   description,
   loginNext,
-  showUserFilter = false,
   showOwnerMeta = false
 }: HistoryListViewProps) {
   const router = useRouter();
@@ -119,7 +110,6 @@ function HistoryListViewInner({
   const pageFromUrl = parsePage(searchParams.get("page"));
   const sizeFromUrl = parseSize(searchParams.get("size"));
   const qFromUrl = searchParams.get("q")?.trim() ?? "";
-  const userIdFromUrl = showUserFilter ? parseUserId(searchParams.get("userId")) : "";
 
   const [items, setItems] = useState<HistoryRow[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -127,37 +117,31 @@ function HistoryListViewInner({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(qFromUrl);
-  const [userIdInput, setUserIdInput] = useState(userIdFromUrl);
+  const [actionBusyId, setActionBusyId] = useState<number | null>(null);
 
   const queryKey = useMemo(
-    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}|${userIdFromUrl}`,
-    [pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]
+    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}`,
+    [pageFromUrl, sizeFromUrl, qFromUrl]
   );
 
   useEffect(() => {
     setSearchInput(qFromUrl);
   }, [qFromUrl]);
 
-  useEffect(() => {
-    setUserIdInput(userIdFromUrl);
-  }, [userIdFromUrl]);
-
   const replaceUrl = useCallback(
-    (next: { page: number; size: number; q: string; userId?: string }) => {
+    (next: { page: number; size: number; q: string }) => {
       const qs = new URLSearchParams();
       if (next.page > 0) qs.set("page", String(next.page));
       if (next.size !== DEFAULT_PAGE_SIZE) qs.set("size", String(next.size));
       if (next.q) qs.set("q", next.q);
-      const userId = next.userId ?? userIdFromUrl;
-      if (showUserFilter && userId) qs.set("userId", userId);
       const query = qs.toString();
       router.replace(query ? `${basePath}?${query}` : basePath);
     },
-    [router, basePath, showUserFilter, userIdFromUrl]
+    [router, basePath]
   );
 
   const load = useCallback(
-    async (pageIndex: number, pageSize: number, q: string, userId: string) => {
+    async (pageIndex: number, pageSize: number, q: string) => {
       const token = getClientAuthToken();
 
       if (!token) {
@@ -175,7 +159,6 @@ function HistoryListViewInner({
           size: String(pageSize)
         });
         if (q) qs.set("q", q);
-        if (showUserFilter && userId) qs.set("userId", userId);
 
         const res = await fetch(`${apiPath}?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -221,20 +204,19 @@ function HistoryListViewInner({
         setLoading(false);
       }
     },
-    [router, apiPath, loginNext, showUserFilter]
+    [router, apiPath, loginNext]
   );
 
   useEffect(() => {
-    void load(pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl);
-  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]);
+    void load(pageFromUrl, sizeFromUrl, qFromUrl);
+  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: searchInput.trim(),
-      userId: showUserFilter ? parseUserId(userIdInput) : ""
+      q: searchInput.trim()
     });
   };
 
@@ -243,18 +225,7 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: "",
-      userId: showUserFilter ? userIdFromUrl : ""
-    });
-  };
-
-  const handleClearUserFilter = () => {
-    setUserIdInput("");
-    replaceUrl({
-      page: 0,
-      size: sizeFromUrl,
-      q: qFromUrl,
-      userId: ""
+      q: ""
     });
   };
 
@@ -262,8 +233,7 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: nextSize,
-      q: qFromUrl,
-      userId: userIdFromUrl
+      q: qFromUrl
     });
   };
 
@@ -274,12 +244,40 @@ function HistoryListViewInner({
       replaceUrl({
         page: nextPage,
         size: sizeFromUrl,
-        q: qFromUrl,
-        userId: userIdFromUrl
+        q: qFromUrl
       });
     },
-    [replaceUrl, sizeFromUrl, qFromUrl, userIdFromUrl, totalPages]
+    [replaceUrl, sizeFromUrl, qFromUrl, totalPages]
   );
+
+  const handleDelete = async (row: HistoryRow) => {
+    const id = row.liuyao_id;
+    if (id == null || actionBusyId != null) return;
+
+    const label = row.title?.trim() || `编号 ${id}`;
+    const ok = window.confirm(`确定删除卦例「${label}」？删除后不可恢复。`);
+    if (!ok) return;
+
+    setActionBusyId(id);
+    setError(null);
+    try {
+      await deleteHistoryItem({ liuyaoId: id });
+      const remainingOnPage = items.length - 1;
+      if (remainingOnPage <= 0 && pageFromUrl > 0) {
+        replaceUrl({
+          page: pageFromUrl - 1,
+          size: sizeFromUrl,
+          q: qFromUrl
+        });
+      } else {
+        await load(pageFromUrl, sizeFromUrl, qFromUrl);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setActionBusyId(null);
+    }
+  };
 
   const pageJumpItems = useMemo(
     () => buildPageJumpItems(pageFromUrl, totalPages),
@@ -293,9 +291,7 @@ function HistoryListViewInner({
     ? "加载中…"
     : qFromUrl
       ? `共 ${totalElements} 条匹配「${qFromUrl}」`
-      : showUserFilter && userIdFromUrl
-        ? `共 ${totalElements} 条（用户 ${userIdFromUrl}）`
-        : `共 ${totalElements} 条记录`;
+      : `共 ${totalElements} 条记录`;
 
   return (
     <div className="flex flex-1 flex-col gap-4 pt-2 sm:pt-4">
@@ -313,8 +309,8 @@ function HistoryListViewInner({
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="按标题搜索"
-              aria-label="按标题搜索"
+              placeholder="搜索标题或反馈记录"
+              aria-label="搜索标题或反馈记录"
               className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
             />
             <Button type="submit" variant="outline" size="sm" disabled={loading}>
@@ -334,39 +330,6 @@ function HistoryListViewInner({
               <span aria-hidden="true" className="hidden sm:block" />
             )}
           </form>
-
-          {showUserFilter && (
-            <form
-              onSubmit={handleSearchSubmit}
-              className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
-            >
-              <input
-                type="text"
-                inputMode="numeric"
-                value={userIdInput}
-                onChange={(e) => setUserIdInput(e.target.value)}
-                placeholder="按用户编号筛选（留空为全站）"
-                aria-label="按用户编号筛选"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
-              />
-              <Button type="submit" variant="outline" size="sm" disabled={loading}>
-                筛选用户
-              </Button>
-              {userIdFromUrl ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={loading}
-                  onClick={handleClearUserFilter}
-                >
-                  清除用户
-                </Button>
-              ) : (
-                <span aria-hidden="true" className="hidden sm:block" />
-              )}
-            </form>
-          )}
 
           <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-[1fr_auto] sm:items-center">
             <p>{countLabel}</p>
@@ -398,7 +361,7 @@ function HistoryListViewInner({
           )}
 
           {!loading && items.length > 0 && (
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
+            <div className="grid gap-2 text-sm sm:grid-cols-2">
               {items.map((row, idx) => {
                 const id = row.liuyao_id;
                 const key =
@@ -407,43 +370,52 @@ function HistoryListViewInner({
                   id != null
                     ? `/result?liuyao_id=${encodeURIComponent(String(id))}`
                     : undefined;
+                const busy = id != null && actionBusyId === id;
 
-                const inner = (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">
-                        {row.title?.trim() || "（无标题）"}
-                      </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {row.date ?? "—"}
-                      </span>
-                    </div>
-                    {id != null && (
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        编号 {id}
-                        {showOwnerMeta && row.username ? ` · ${row.username}` : null}
-                        {showOwnerMeta && row.user_id != null && !row.username
-                          ? ` · 用户 ${row.user_id}`
-                          : null}
-                      </p>
-                    )}
-                  </>
-                );
-
-                return href ? (
-                  <Link
-                    key={key}
-                    href={href}
-                    className="flex flex-col rounded-lg border bg-card/60 p-3 transition-colors hover:bg-accent/40"
-                  >
-                    {inner}
-                  </Link>
-                ) : (
+                return (
                   <div
                     key={key}
-                    className="flex flex-col rounded-lg border bg-card/60 p-3"
+                    className="flex flex-col rounded-lg border bg-card/60 px-3 py-2"
                   >
-                    {inner}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="block truncate text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
+                          >
+                            {row.title?.trim() || "（无标题）"}
+                          </Link>
+                        ) : (
+                          <span className="block truncate text-sm font-medium">
+                            {row.title?.trim() || "（无标题）"}
+                          </span>
+                        )}
+                        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
+                          {row.date ?? "—"}
+                          {showOwnerMeta && row.username
+                            ? ` · ${row.username}`
+                            : null}
+                          {showOwnerMeta &&
+                          row.user_id != null &&
+                          !row.username
+                            ? ` · 用户 ${row.user_id}`
+                            : null}
+                        </p>
+                      </div>
+                      {id != null && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 shrink-0 px-2 text-xs"
+                          disabled={loading || actionBusyId != null}
+                          onClick={() => void handleDelete(row)}
+                        >
+                          {busy ? "删除中…" : "删除"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
