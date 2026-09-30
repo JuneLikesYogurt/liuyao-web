@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 38" role="img" aria-labelledby="title desc">
+  <title id="title">三钱六掷</title>
+  <desc id="desc">三枚相连的方孔铜钱组成的品牌印记</desc>
+  <g fill="#f6f7f4" stroke="#c44732" stroke-width="1.8">
+    <circle cx="17" cy="20" r="12"/>
+    <rect x="13.5" y="16.5" width="7" height="7" rx="0.8" fill="none" stroke-width="1.5"/>
+    <circle cx="55" cy="20" r="12"/>
+    <rect x="51.5" y="16.5" width="7" height="7" rx="0.8" fill="none" stroke-width="1.5"/>
+    <circle cx="36" cy="17" r="14" stroke-width="2.1"/>
+    <rect x="32" y="13" width="8" height="8" rx="0.8" fill="none" stroke-width="1.5"/>
+  </g>
+</svg>

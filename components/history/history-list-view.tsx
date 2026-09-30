@@ -4,15 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { deleteHistoryItem } from "@/lib/api";
 import { getClientAuthToken } from "@/lib/client-auth-token";
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -40,6 +31,7 @@ export interface HistoryListViewProps {
   title: string;
   description: string;
   loginNext: string;
+  showUserFilter?: boolean;
   showOwnerMeta?: boolean;
 }
 
@@ -54,6 +46,14 @@ function parseSize(value: string | null): number {
   return PAGE_SIZE_OPTIONS.includes(n as (typeof PAGE_SIZE_OPTIONS)[number])
     ? n
     : DEFAULT_PAGE_SIZE;
+}
+
+function parseUserId(value: string | null): string {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const n = Number.parseInt(trimmed, 10);
+  return Number.isFinite(n) && n > 0 ? String(n) : "";
 }
 
 function buildPageJumpItems(
@@ -102,6 +102,7 @@ function HistoryListViewInner({
   title,
   description,
   loginNext,
+  showUserFilter = false,
   showOwnerMeta = false
 }: HistoryListViewProps) {
   const router = useRouter();
@@ -110,6 +111,7 @@ function HistoryListViewInner({
   const pageFromUrl = parsePage(searchParams.get("page"));
   const sizeFromUrl = parseSize(searchParams.get("size"));
   const qFromUrl = searchParams.get("q")?.trim() ?? "";
+  const userIdFromUrl = showUserFilter ? parseUserId(searchParams.get("userId")) : "";
 
   const [items, setItems] = useState<HistoryRow[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -117,31 +119,37 @@ function HistoryListViewInner({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(qFromUrl);
-  const [actionBusyId, setActionBusyId] = useState<number | null>(null);
+  const [userIdInput, setUserIdInput] = useState(userIdFromUrl);
 
   const queryKey = useMemo(
-    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}`,
-    [pageFromUrl, sizeFromUrl, qFromUrl]
+    () => `${pageFromUrl}|${sizeFromUrl}|${qFromUrl}|${userIdFromUrl}`,
+    [pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]
   );
 
   useEffect(() => {
     setSearchInput(qFromUrl);
   }, [qFromUrl]);
 
+  useEffect(() => {
+    setUserIdInput(userIdFromUrl);
+  }, [userIdFromUrl]);
+
   const replaceUrl = useCallback(
-    (next: { page: number; size: number; q: string }) => {
+    (next: { page: number; size: number; q: string; userId?: string }) => {
       const qs = new URLSearchParams();
       if (next.page > 0) qs.set("page", String(next.page));
       if (next.size !== DEFAULT_PAGE_SIZE) qs.set("size", String(next.size));
       if (next.q) qs.set("q", next.q);
+      const userId = next.userId ?? userIdFromUrl;
+      if (showUserFilter && userId) qs.set("userId", userId);
       const query = qs.toString();
       router.replace(query ? `${basePath}?${query}` : basePath);
     },
-    [router, basePath]
+    [router, basePath, showUserFilter, userIdFromUrl]
   );
 
   const load = useCallback(
-    async (pageIndex: number, pageSize: number, q: string) => {
+    async (pageIndex: number, pageSize: number, q: string, userId: string) => {
       const token = getClientAuthToken();
 
       if (!token) {
@@ -159,15 +167,25 @@ function HistoryListViewInner({
           size: String(pageSize)
         });
         if (q) qs.set("q", q);
+        if (showUserFilter && userId) qs.set("userId", userId);
 
         const res = await fetch(`${apiPath}?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        const data = (await res.json()) as SpringPage & {
+        const raw = await res.text();
+        let data: SpringPage & {
           error?: string;
           message?: string;
-        };
+        } = {};
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch {
+          if (!res.ok) {
+            throw new Error("服务暂时没有回应，请稍后再试");
+          }
+          throw new Error("记录数据格式异常，请稍后再试");
+        }
 
         if (res.status === 401) {
           router.push(`/login?next=${encodeURIComponent(loginNext)}`);
@@ -204,19 +222,20 @@ function HistoryListViewInner({
         setLoading(false);
       }
     },
-    [router, apiPath, loginNext]
+    [router, apiPath, loginNext, showUserFilter]
   );
 
   useEffect(() => {
-    void load(pageFromUrl, sizeFromUrl, qFromUrl);
-  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl]);
+    void load(pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl);
+  }, [load, queryKey, pageFromUrl, sizeFromUrl, qFromUrl, userIdFromUrl]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: searchInput.trim()
+      q: searchInput.trim(),
+      userId: showUserFilter ? parseUserId(userIdInput) : ""
     });
   };
 
@@ -225,7 +244,18 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: sizeFromUrl,
-      q: ""
+      q: "",
+      userId: showUserFilter ? userIdFromUrl : ""
+    });
+  };
+
+  const handleClearUserFilter = () => {
+    setUserIdInput("");
+    replaceUrl({
+      page: 0,
+      size: sizeFromUrl,
+      q: qFromUrl,
+      userId: ""
     });
   };
 
@@ -233,7 +263,8 @@ function HistoryListViewInner({
     replaceUrl({
       page: 0,
       size: nextSize,
-      q: qFromUrl
+      q: qFromUrl,
+      userId: userIdFromUrl
     });
   };
 
@@ -244,40 +275,12 @@ function HistoryListViewInner({
       replaceUrl({
         page: nextPage,
         size: sizeFromUrl,
-        q: qFromUrl
+        q: qFromUrl,
+        userId: userIdFromUrl
       });
     },
-    [replaceUrl, sizeFromUrl, qFromUrl, totalPages]
+    [replaceUrl, sizeFromUrl, qFromUrl, userIdFromUrl, totalPages]
   );
-
-  const handleDelete = async (row: HistoryRow) => {
-    const id = row.liuyao_id;
-    if (id == null || actionBusyId != null) return;
-
-    const label = row.title?.trim() || `编号 ${id}`;
-    const ok = window.confirm(`确定删除卦例「${label}」？删除后不可恢复。`);
-    if (!ok) return;
-
-    setActionBusyId(id);
-    setError(null);
-    try {
-      await deleteHistoryItem({ liuyaoId: id });
-      const remainingOnPage = items.length - 1;
-      if (remainingOnPage <= 0 && pageFromUrl > 0) {
-        replaceUrl({
-          page: pageFromUrl - 1,
-          size: sizeFromUrl,
-          q: qFromUrl
-        });
-      } else {
-        await load(pageFromUrl, sizeFromUrl, qFromUrl);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "删除失败");
-    } finally {
-      setActionBusyId(null);
-    }
-  };
 
   const pageJumpItems = useMemo(
     () => buildPageJumpItems(pageFromUrl, totalPages),
@@ -291,55 +294,78 @@ function HistoryListViewInner({
     ? "加载中…"
     : qFromUrl
       ? `共 ${totalElements} 条匹配「${qFromUrl}」`
-      : `共 ${totalElements} 条记录`;
+      : showUserFilter && userIdFromUrl
+        ? `共 ${totalElements} 条（用户 ${userIdFromUrl}）`
+        : `共 ${totalElements} 条记录`;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 pt-2 sm:pt-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <div className="page page--narrow records-page">
+      <div className="page-head">
+        <div><p className="page-kicker">问卦卷宗</p><h1 className="page-title">{title}</h1><p className="page-subtitle">{description}</p></div>
+        <Link className="button" href="/">再起一卦</Link>
+      </div>
+      <div className="records-toolbar records-toolbar--real">
           <form
             onSubmit={handleSearchSubmit}
-            className="grid gap-2 sm:grid-cols-[1fr_auto_auto]"
+            className="records-search"
           >
-            <input
+            <label className="input-icon">
+            <span className="sr-only">按标题搜索</span>
+            <input className="field"
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="搜索标题或反馈记录"
-              aria-label="搜索标题或反馈记录"
-              className="w-full rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-sm text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+              placeholder="按标题搜索"
+              aria-label="按标题搜索"
             />
-            <Button type="submit" variant="outline" size="sm" disabled={loading}>
-              搜索
-            </Button>
+            </label>
+            <button className="button button--outline" type="submit" disabled={loading}>搜索</button>
             {qFromUrl ? (
-              <Button
+              <button className="button button--ghost"
                 type="button"
-                variant="ghost"
-                size="sm"
                 disabled={loading}
                 onClick={handleClearSearch}
               >
                 清除
-              </Button>
-            ) : (
-              <span aria-hidden="true" className="hidden sm:block" />
-            )}
+              </button>
+            ) : null}
           </form>
 
-          <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-[1fr_auto] sm:items-center">
+          {showUserFilter && (
+            <form
+              onSubmit={handleSearchSubmit}
+              className="records-search"
+            >
+              <input className="field"
+                type="text"
+                inputMode="numeric"
+                value={userIdInput}
+                onChange={(e) => setUserIdInput(e.target.value)}
+                placeholder="按用户编号筛选（留空为全站）"
+                aria-label="按用户编号筛选"
+              />
+              <button className="button button--outline" type="submit" disabled={loading}>筛选用户</button>
+              {userIdFromUrl ? (
+                <button className="button button--ghost"
+                  type="button"
+                  disabled={loading}
+                  onClick={handleClearUserFilter}
+                >
+                  清除用户
+                </button>
+              ) : null}
+            </form>
+          )}
+
+          <div className="records-meta">
             <p>{countLabel}</p>
-            <label className="grid grid-cols-[auto_1fr] items-center gap-2 sm:justify-items-end">
+            <label>
               <span>每页</span>
               <select
                 value={sizeFromUrl}
                 disabled={loading}
                 onChange={(e) => handleSizeChange(Number(e.target.value))}
-                className="rounded-md border border-slate-200 bg-background px-2 py-1 text-xs text-slate-900 outline-none focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200"
+                className="field records-size"
               >
                 {PAGE_SIZE_OPTIONS.map((size) => (
                   <option key={size} value={size}>
@@ -349,19 +375,19 @@ function HistoryListViewInner({
               </select>
             </label>
           </div>
+      </div>
 
-          {error && !loading && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+      {error && !loading && <div className="empty-state"><strong>记录暂时无法展开</strong><p>{error}</p></div>}
 
-          {!loading && !error && items.length === 0 && (
-            <p className="text-sm text-muted-foreground">
+      {!loading && !error && items.length === 0 && (
+            <div className="empty-state"><strong>册中尚无记录</strong><p>
               {qFromUrl ? "没有匹配的历史记录。" : "暂无历史记录。"}
-            </p>
+            </p></div>
           )}
 
-          {!loading && items.length > 0 && (
-            <div className="grid gap-2 text-sm sm:grid-cols-2">
+      {!loading && items.length > 0 && (
+            <section className="records-list" aria-label="排盘记录列表">
+              <div className="record-head"><span></span><span>所问与卦象</span><span>起卦时间</span><span>方式</span><span>归属</span><span></span></div>
               {items.map((row, idx) => {
                 const id = row.liuyao_id;
                 const key =
@@ -370,71 +396,41 @@ function HistoryListViewInner({
                   id != null
                     ? `/result?liuyao_id=${encodeURIComponent(String(id))}`
                     : undefined;
-                const busy = id != null && actionBusyId === id;
 
-                return (
+                const owner = showOwnerMeta
+                  ? row.username || (row.user_id != null ? `用户 ${row.user_id}` : "—")
+                  : id != null ? `编号 ${id}` : "—";
+                const inner = <><span className="record-number">{String(idx + 1).padStart(2, "0")}</span><div className="record-question"><strong>{row.title?.trim() || "（无标题）"}</strong><span>{id != null ? `卦例 · ${id}` : "待补全"}</span></div><span className="record-cell">{row.date ?? "—"}</span><span className="record-cell record-cell--method">六爻排盘</span><span className="record-cell record-cell--status">{owner}</span><span className="record-arrow">→</span></>;
+
+                return href ? (
+                  <Link
+                    key={key}
+                    href={href}
+                    className="record-row"
+                  >
+                    {inner}
+                  </Link>
+                ) : (
                   <div
                     key={key}
-                    className="flex flex-col rounded-lg border bg-card/60 px-3 py-2"
+                    className="record-row"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        {href ? (
-                          <Link
-                            href={href}
-                            className="block truncate text-sm font-medium text-slate-900 underline-offset-4 hover:underline"
-                          >
-                            {row.title?.trim() || "（无标题）"}
-                          </Link>
-                        ) : (
-                          <span className="block truncate text-sm font-medium">
-                            {row.title?.trim() || "（无标题）"}
-                          </span>
-                        )}
-                        <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">
-                          {row.date ?? "—"}
-                          {showOwnerMeta && row.username
-                            ? ` · ${row.username}`
-                            : null}
-                          {showOwnerMeta &&
-                          row.user_id != null &&
-                          !row.username
-                            ? ` · 用户 ${row.user_id}`
-                            : null}
-                        </p>
-                      </div>
-                      {id != null && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 shrink-0 px-2 text-xs"
-                          disabled={loading || actionBusyId != null}
-                          onClick={() => void handleDelete(row)}
-                        >
-                          {busy ? "删除中…" : "删除"}
-                        </Button>
-                      )}
-                    </div>
+                    {inner}
                   </div>
                 );
               })}
-            </div>
+            </section>
           )}
 
           {showPagination && (
-            <div className="grid gap-2 pt-1">
-              <div className="overflow-x-auto">
-                <div className="grid w-max auto-cols-max grid-flow-col items-center gap-1.5">
-                  <Button
+            <div className="records-pagination">
+                  <button className="button button--outline"
                     type="button"
-                    variant="outline"
-                    size="sm"
                     disabled={loading || pageFromUrl <= 0}
                     onClick={() => goToPage(0)}
                   >
                     首页
-                  </Button>
+                  </button>
 
                   {pageJumpItems.map((item, idx) =>
                     item === "ellipsis" ? (
@@ -446,62 +442,37 @@ function HistoryListViewInner({
                         …
                       </span>
                     ) : (
-                      <Button
+                      <button className="button button--ghost"
                         key={`page-${item}`}
                         type="button"
-                        variant={item === pageFromUrl ? "default" : "outline"}
-                        size="sm"
-                        className="min-w-8 px-2"
                         disabled={loading || item === pageFromUrl}
                         aria-current={item === pageFromUrl ? "page" : undefined}
                         onClick={() => goToPage(item)}
                       >
                         {item + 1}
-                      </Button>
+                      </button>
                     )
                   )}
 
-                  <Button
+                  <button className="button button--outline"
                     type="button"
-                    variant="outline"
-                    size="sm"
                     disabled={loading || pageFromUrl >= lastPageIndex}
                     onClick={() => goToPage(lastPageIndex)}
                   >
                     尾页
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
+                  </button>
+              <p>
                 第 {pageFromUrl + 1} / {Math.max(totalPages, 1)} 页
               </p>
             </div>
           )}
-
-          <div className="flex flex-wrap gap-3 pt-2 text-xs">
-            <Link
-              href="/"
-              className="rounded-full border bg-background px-3 py-1.5 text-muted-foreground underline-offset-4 hover:bg-accent hover:text-accent-foreground hover:underline"
-            >
-              返回起卦
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
 function HistoryListFallback({ title }: { title: string }) {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10">
-      <Card className="border-slate-200/80 bg-white/95 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-xl">{title}</CardTitle>
-          <CardDescription>加载中…</CardDescription>
-        </CardHeader>
-      </Card>
-    </div>
+    <div className="page page--narrow records-page"><div className="page-head"><div><p className="page-kicker">问卦卷宗</p><h1 className="page-title">{title}</h1><p className="page-subtitle">正在展开册页…</p></div></div></div>
   );
 }
 

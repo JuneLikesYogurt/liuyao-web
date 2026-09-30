@@ -1,13 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from "@/components/ui/card";
 import { yaoWeiLabel } from "@/lib/yao-wei";
 
 export function GuaFeedbackPanel({
@@ -39,24 +31,20 @@ export function GuaFeedbackPanel({
   onRecalculate: () => void;
   onSave: () => void | Promise<void>;
 }) {
-  const verdictBtnClass = (active: boolean) =>
-    active
-      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-      : "bg-background";
-
   const showYongshenSection = yongshen != null;
 
   return (
-    <Card className="border-dashed shadow-none">
-      <CardHeader className="p-4 pb-2">
-        <CardTitle className="text-sm font-medium">本卦反馈</CardTitle>
-      </CardHeader>
+    <section className="real-feedback" id="feedback-panel">
+      <div className="real-feedback__head">
+        <p className="page-kicker">回看留记</p>
+        <h2>本卦反馈</h2>
+      </div>
 
-      <CardContent className="space-y-3 p-4 pt-0">
-        <div className="space-y-1">
+      <div className="real-feedback__body">
+        <div className="field-wrap">
           <label
             htmlFor="gua-feedback-comment"
-            className="text-[11px] text-muted-foreground"
+            className="field-label"
           >
             反馈记录
           </label>
@@ -65,96 +53,84 @@ export function GuaFeedbackPanel({
             value={comment}
             onChange={(e) => onCommentChange(e.target.value)}
             rows={4}
-            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-xs leading-relaxed ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="field real-feedback__textarea"
             placeholder="选填：记录本卦复盘、问题等（全卦一份）"
           />
         </div>
 
         {showYongshenSection && (
-          <div className="space-y-3 border-t pt-3">
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-foreground">
+          <div className="real-feedback__yongshen">
+            <div>
+              <p className="real-feedback__current">
                 当前用神：{yaoWeiLabel(yongshen)} · {liuqin ?? "—"}
               </p>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <div className="real-feedback__count">
                 <span>
                   计数：
                   {calcLoading ? (
                     "计算中…"
                   ) : calcError ? (
-                    <span className="text-destructive">{calcError}</span>
+                    <span className="auth-message--error">{calcError}</span>
                   ) : countValue != null ? (
-                    <span className="tabular-nums text-foreground">
+                    <strong>
                       {countValue}
-                    </span>
+                    </strong>
                   ) : (
                     "—"
                   )}
                 </span>
-                <Button
+                <button className="button button--outline real-feedback__small"
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs"
                   disabled={calcLoading}
                   onClick={onRecalculate}
                 >
                   重新计算
-                </Button>
+                </button>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <p className="text-[11px] text-muted-foreground">是否应验</p>
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <Button
+            <div>
+              <p className="field-label">是否应验</p>
+              <div className="feedback-choices">
+                <button className="choice"
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className={`h-8 text-xs ${verdictBtnClass(feedbackCorrect === true)}`}
+                  aria-pressed={feedbackCorrect === true}
                   onClick={() => onFeedbackCorrectChange(true)}
                 >
                   是
-                </Button>
-                <Button
+                </button>
+                <button className="choice"
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className={`h-8 text-xs ${verdictBtnClass(feedbackCorrect === false)}`}
+                  aria-pressed={feedbackCorrect === false}
                   onClick={() => onFeedbackCorrectChange(false)}
                 >
                   否
-                </Button>
-                <Button
+                </button>
+                <button className="button button--ghost real-feedback__small"
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs text-muted-foreground"
                   disabled={feedbackCorrect === null}
                   onClick={() => onFeedbackCorrectChange(null)}
                 >
                   清除
-                </Button>
+                </button>
               </div>
             </div>
           </div>
         )}
-      </CardContent>
+      </div>
 
-      <CardFooter className="flex-col items-stretch gap-2 p-4 pt-0">
+      <div className="real-feedback__foot">
         {saveError && (
-          <p className="text-xs text-destructive">{saveError}</p>
+          <p className="auth-message auth-message--error">{saveError}</p>
         )}
-        <Button
+        <button className="button button--ink"
           type="button"
-          size="sm"
-          className="w-full sm:w-auto sm:self-end"
           disabled={saving || calcLoading}
           onClick={() => void onSave()}
         >
-          {saving ? "保存中…" : "保存"}
-        </Button>
-      </CardFooter>
-    </Card>
+          {saving ? "保存中…" : "保存反馈"}
+        </button>
+      </div>
+    </section>
   );
 }
