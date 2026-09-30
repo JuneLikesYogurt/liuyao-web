@@ -34,4 +34,6 @@ npm run dev
 
 浏览器访问 **http://localhost:3000**。排盘前请先启动 **后端**（端口以实际配置为准，常见 `8080`）。
 
+`npm run dev` 写入 `.next-dev/`；`npm run build` 写入 `.next/`，互不覆盖。发版上传只读 `.next/`。
+
 更多实现细节见 **[architecture.md](architecture.md)**。

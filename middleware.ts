@@ -3,17 +3,38 @@ import type { NextRequest } from "next/server";
 
 import { hasValidSessionToken } from "@/lib/session-token";
 
-/** Behind Nginx: use forwarded host/proto so redirects stay on the public URL, not 127.0.0.1:3000. */
+function firstHeader(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.split(",")[0]?.trim();
+  return trimmed || null;
+}
+
+function isLocalHost(host: string): boolean {
+  return /^(127\.0\.0\.1|localhost)(:\d+)?$/i.test(host);
+}
+
+/** Behind Nginx: build public origin for redirects (avoid 127.0.0.1:3000 / http downgrade). */
 function requestOrigin(request: NextRequest): string {
   const host =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const proto =
-    request.headers.get("x-forwarded-proto") ??
+    firstHeader(request.headers.get("x-forwarded-host")) ??
+    firstHeader(request.headers.get("host"));
+  let proto =
+    firstHeader(request.headers.get("x-forwarded-proto")) ??
     request.nextUrl.protocol.replace(":", "");
+
+  if (host && !isLocalHost(host) && proto === "http") {
+    proto = "https";
+  }
+
   if (host) {
     return `${proto}://${host}`;
   }
   return request.nextUrl.origin;
+}
+
+function redirectPublic(request: NextRequest, targetPath: string): NextResponse {
+  const location = new URL(targetPath, `${requestOrigin(request)}/`).toString();
+  return NextResponse.redirect(location);
 }
 
 /** 路由守卫：仅根据 JWT payload 的 exp 判断「是否像已登录」，不解签；身份以 Spring 验签为准。 */
@@ -51,20 +72,19 @@ export function middleware(request: NextRequest) {
       return NextResponse.next();
     }
     const nextParam = safeInternalNext(request.nextUrl.searchParams.get("next"));
-    const origin = `${requestOrigin(request)}/`;
     if (nextParam) {
-      return NextResponse.redirect(new URL(nextParam, origin));
+      return redirectPublic(request, nextParam);
     }
-    return NextResponse.redirect(new URL("/", origin));
+    return redirectPublic(request, "/");
   }
 
   if (authed) {
     return NextResponse.next();
   }
 
-  const loginUrl = new URL("/login", `${requestOrigin(request)}/`);
-  loginUrl.searchParams.set("next", `${pathname}${search}`);
-  return NextResponse.redirect(loginUrl);
+  const next = `${pathname}${search}`;
+  const loginTarget = `/login?next=${encodeURIComponent(next)}`;
+  return redirectPublic(request, loginTarget);
 }
 
 export const config = {

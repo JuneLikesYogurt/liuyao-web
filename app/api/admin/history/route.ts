@@ -8,7 +8,7 @@ import {
 
 export const runtime = "nodejs";
 
-const FORWARD_PARAMS = ["page", "size", "q", "has_feedback", "userId"] as const;
+const FORWARD_PARAMS = ["page", "size", "q", "has_feedback"] as const;
 
 export async function GET(req: Request) {
   const incoming = new URL(req.url);
