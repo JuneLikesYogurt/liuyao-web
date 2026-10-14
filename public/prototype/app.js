@@ -430,6 +430,14 @@ import * as THREE from "./vendor/three.module.js";
     3: { label: "老阳", yin: false, moving: true },
   };
 
+  function movingMark(type) {
+    const info = lineTypes[Number(type)];
+    if (!info?.moving) return "";
+    const symbol = info.yin ? "×" : "○";
+    const title = info.yin ? "阴变阳" : "阳变阴";
+    return `<span class="manual-moving-mark" title="${title}">${symbol}</span>`;
+  }
+
   const demoBen = [1, 2, 1, 2, 2, 0];
   const demoBian = [1, 2, 1, 2, 2, 1];
   const benLabels = ["子孙 子水", "官鬼 寅木", "妻财 辰土", "兄弟 午火", "父母 申金", "官鬼 戌土"];
@@ -628,7 +636,8 @@ import * as THREE from "./vendor/three.module.js";
       <div class="cast-controls">
         <div class="ritual-progress" data-cast-progress-steps aria-label="六爻进度，已得 ${count} 爻">${progress}</div>
         <div class="cast-actions">
-          <button class="button button--wide hold-button ${complete ? "hold-button--observe" : ""} ${state.cast.generating ? "is-loading" : ""}" type="button" data-cast-main-action data-action="${complete ? "generate-reading" : "hold-toss"}" ${state.cast.tossing || state.cast.imprinting || state.cast.generating ? "disabled" : ""}><span class="hold-button__label" data-hold-label>${state.cast.generating ? `${icon("loader")}正在生成` : mainLabel}</span><span class="hold-button__meter" aria-hidden="true"></span></button>
+          ${state.cast.panError ? `<p class="cast-pan-error" role="alert">${escapeHTML(state.cast.panError)}</p>` : ""}
+          <button class="button button--wide hold-button ${complete ? "hold-button--observe" : ""} ${state.cast.generating ? "is-loading" : ""}" type="button" data-cast-main-action data-action="${complete ? "generate-reading" : "hold-toss"}" ${state.cast.tossing || state.cast.imprinting || state.cast.generating ? "disabled" : ""}><span class="hold-button__label" data-hold-label>${state.cast.generating ? `${icon("loader")}正在排盘…` : mainLabel}</span><span class="hold-button__meter" aria-hidden="true"></span></button>
           <button class="button button--ghost cast-undo" type="button" data-cast-undo data-action="undo-cast" ${count === 0 || state.cast.tossing || state.cast.imprinting ? "disabled" : ""}>${icon("arrowLeft")}<span>撤回</span></button>
           <button class="button button--ghost cast-restart" type="button" data-action="request-reset-cast" ${count === 0 || state.cast.tossing || state.cast.imprinting ? "disabled" : ""}>${icon("rotate")}<span>重起</span></button>
         </div>
@@ -639,16 +648,17 @@ import * as THREE from "./vendor/three.module.js";
   function manualStage() {
     const complete = state.cast.manualLines.every((value) => value !== "");
     const completedCount = state.cast.manualLines.filter((value) => value !== "").length;
-    const rows = lineNames.map((name, index) => {
+    const rows = [...lineNames].reverse().map((name) => {
+      const index = lineNames.indexOf(name);
       const value = state.cast.manualLines[index];
-      const choice = value === "" ? `<span class="manual-choice__empty">选择爻象</span>${icon("chevronDown")}` : `${renderYaoSymbol(Number(value))}<span class="manual-choice__name">${lineTypes[Number(value)].label}${lineTypes[Number(value)].moving ? " · 动" : ""}</span>${icon("chevronDown")}`;
+      const choice = value === "" ? `<span class="manual-choice__empty">选择爻象</span>${icon("chevronDown")}` : `<span class="manual-choice__line">${renderYaoSymbol(Number(value))}${movingMark(value)}</span><span class="manual-choice__name">${lineTypes[Number(value)].label}</span>${icon("chevronDown")}`;
       return `<div class="manual-row ${value !== "" ? "is-filled" : ""}" data-manual-row="${index}"><span class="manual-row__index">${String(index + 1).padStart(2, "0")}</span><span class="manual-row__label">${name}</span><button class="manual-choice" type="button" data-action="open-manual-picker" data-index="${index}" aria-label="选择${name}爻象">${choice}</button></div>`;
     }).join("");
     return `<section class="manual-workspace" aria-labelledby="manual-title">
       <header class="manual-ledger__head"><div><p class="page-kicker">录爻册</p><h2 class="section-title" id="manual-title">手动录入</h2><p class="section-subtitle">已有卦象时，由初爻起，自下而上依次录入</p></div><div class="manual-count" aria-label="已录入 ${completedCount} 爻"><strong data-manual-count>${String(completedCount).padStart(2, "0")}</strong><span>/ 06</span></div></header>
       <label class="manual-date" for="cast-datetime"><span>起卦时间</span><input class="manual-control manual-date__input" id="cast-datetime" data-cast-datetime type="datetime-local" value="${escapeHTML(state.cast.dateTime)}"></label>
       <div class="manual-grid" aria-label="六爻录入">${rows}</div>
-      <footer class="manual-actions"><p>六爻录毕，方可观卦</p><div><button class="button button--gold ${state.cast.generating ? "is-loading" : ""}" type="button" data-manual-submit data-action="generate-manual" ${!complete || state.cast.generating ? "disabled" : ""}>${state.cast.generating ? `${icon("loader")}正在生成` : `${icon("sparkles")}录毕观卦`}</button><button class="button button--ghost" type="button" data-action="reset-manual">${icon("rotate")}<span>清空</span></button></div></footer>
+      <footer class="manual-actions">${state.cast.panError ? `<p class="cast-pan-error" role="alert">${escapeHTML(state.cast.panError)}</p>` : ""}<p>六爻录毕，方可观卦</p><div><button class="button button--gold ${state.cast.generating ? "is-loading" : ""}" type="button" data-manual-submit data-action="generate-manual" ${!complete || state.cast.generating ? "disabled" : ""}>${state.cast.generating ? `${icon("loader")}正在排盘…` : `${icon("sparkles")}录毕观卦`}</button><button class="button button--ghost" type="button" data-action="reset-manual">${icon("rotate")}<span>清空</span></button></div></footer>
     </section>`;
   }
 
@@ -662,7 +672,7 @@ import * as THREE from "./vendor/three.module.js";
     ];
     return `<div class="ritual-dialog-layer manual-picker-layer" data-manual-picker-layer><div class="manual-picker" role="dialog" aria-modal="true" aria-labelledby="manual-picker-title">
       <header><div><p class="page-kicker">${lineNames[state.manualPicker]}</p><h2 id="manual-picker-title">选择爻象</h2></div><button class="icon-button" type="button" data-action="close-manual-picker" aria-label="关闭">${icon("x")}</button></header>
-      <div class="manual-picker__options">${options.map(([value, label, coins]) => `<button class="manual-symbol-option" type="button" data-action="choose-manual-line" data-value="${value}" aria-pressed="${String(state.cast.manualLines[state.manualPicker]) === String(value)}">${renderYaoSymbol(value)}<span><strong>${label}${lineTypes[value].moving ? " · 动" : ""}</strong><small>${coins}</small></span></button>`).join("")}</div>
+      <div class="manual-picker__options">${options.map(([value, label, coins]) => `<button class="manual-symbol-option" type="button" data-action="choose-manual-line" data-value="${value}" aria-pressed="${String(state.cast.manualLines[state.manualPicker]) === String(value)}"><span class="manual-choice__line">${renderYaoSymbol(value)}${movingMark(value)}</span><span><strong>${label}</strong><small>${coins}</small></span></button>`).join("")}</div>
     </div></div>`;
   }
 
@@ -699,7 +709,7 @@ import * as THREE from "./vendor/three.module.js";
     const manual = state.cast.method === "manual";
     const count = manual ? state.cast.manualLines.filter((line) => line !== "").length : state.cast.lines.filter((line) => line !== null).length;
     return `<div class="page cast-session ritual-page ${manual ? "is-manual" : "is-coins"}">
-      <header class="cast-session__head ritual-masthead"><div><p class="page-kicker">所问之事</p><h1>${escapeHTML(state.cast.question)}</h1></div><button class="button button--ghost" type="button" data-action="edit-intention">${icon("arrowLeft")}重写所问</button></header>
+      <header class="cast-session__head ritual-masthead"><div><p class="page-kicker">所问之事</p>${state.cast.question ? `<h1>${escapeHTML(state.cast.question)}</h1>` : ""}</div><button class="button button--ghost" type="button" data-action="edit-intention">${icon("arrowLeft")}重写所问</button></header>
       <div class="cast-layout ritual-field">
         <div class="ritual-folio" aria-hidden="true"><span>丙午年</span><b>三钱六掷</b><span>${manual ? `已录 ${String(count).padStart(2, "0")} 爻` : `第 ${String(Math.min(count + 1, 6)).padStart(2, "0")} 次`}</span></div>
         <div class="cast-right ritual-center">${manual ? manualStage() : coinStage()}</div>
@@ -707,23 +717,9 @@ import * as THREE from "./vendor/three.module.js";
         <p class="ritual-side-note" aria-hidden="true">${manual ? "自初而上 · 逐爻录入" : "一念既起 · 六爻渐成"}</p>
       </div>
       ${manual ? manualPickerLayer() : ""}
-      ${state.summaryOpen ? castSummaryLayer() : ""}
       ${manual ? "" : `<div class="ritual-dialog-layer" data-reset-dialog hidden><div class="ritual-dialog" role="alertdialog" aria-modal="true" aria-labelledby="reset-dialog-title" aria-describedby="reset-dialog-copy"><button class="icon-button ritual-dialog__close" type="button" data-action="cancel-reset-cast" aria-label="关闭">${icon("x")}</button><span class="ritual-dialog__seal" aria-hidden="true">重起</span><p class="page-kicker">重起一卦</p><h2 id="reset-dialog-title">要舍去这一卦吗？</h2><p id="reset-dialog-copy" data-reset-copy>当前已得 ${count} 爻。清空后需要重新投掷，本次所问仍会保留。</p><div class="ritual-dialog__actions"><button class="button button--danger" type="button" data-action="confirm-reset-cast">舍去本卦</button><button class="button button--ghost" type="button" data-action="cancel-reset-cast">继续观卦</button></div></div></div>`}
       ${manual ? `<div class="ritual-dialog-layer" data-manual-reset-dialog hidden><div class="ritual-dialog" role="alertdialog" aria-modal="true" aria-labelledby="manual-reset-title"><button class="icon-button ritual-dialog__close" type="button" data-action="cancel-reset-manual" aria-label="关闭">${icon("x")}</button><span class="ritual-dialog__seal" aria-hidden="true">清册</span><p class="page-kicker">清空录爻册</p><h2 id="manual-reset-title">要舍去已录六爻吗？</h2><p>当前已录 ${count} 爻。清空后需要从初爻重新选择。</p><div class="ritual-dialog__actions"><button class="button button--danger" type="button" data-action="confirm-reset-manual">舍去记录</button><button class="button button--ghost" type="button" data-action="cancel-reset-manual">继续录入</button></div></div></div>` : ""}
     </div>`;
-  }
-
-  function castSummaryLayer() {
-    const lines = state.cast.lines.every((value) => value !== null) ? state.cast.lines : demoBen;
-    const moving = lines.map((value, index) => lineTypes[value].moving ? lineNames[index] : "").filter(Boolean);
-    return `<div class="ritual-dialog-layer cast-summary-layer"><section class="cast-summary" role="dialog" aria-modal="true" aria-labelledby="cast-summary-title">
-      <button class="icon-button cast-summary__close" type="button" data-action="close-cast-summary" aria-label="返回起卦页">${icon("x")}</button>
-      <div class="cast-summary__seal" aria-hidden="true">成卦</div><p class="page-kicker">六爻既成</p><h2 id="cast-summary-title">先观其象，再读其意</h2>
-      <p class="cast-summary__question">${escapeHTML(state.cast.question || "本次所问之事")}</p>
-      <div class="cast-summary__hexagrams"><div><span>本卦</span><strong>水雷屯</strong><small>坎宫 · 二世</small></div><i aria-hidden="true">之</i><div><span>变卦</span><strong>地雷复</strong><small>坤宫 · 一世</small></div></div>
-      <dl class="cast-summary__meta"><div><dt>动爻</dt><dd>${moving.length ? moving.join("、") : "无动爻"}</dd></div><div><dt>起卦时间</dt><dd>${escapeHTML(state.cast.dateTime.replace("T", " "))}</dd></div></dl>
-      <div class="cast-summary__actions"><button class="button button--ink" type="button" data-action="open-full-reading">展开排盘 ${icon("arrowRight")}</button><button class="button button--ghost" type="button" data-action="close-cast-summary">再看一眼铜钱</button></div>
-    </section></div>`;
   }
 
   function readingBoard(id) {
@@ -1061,14 +1057,6 @@ import * as THREE from "./vendor/three.module.js";
   function beginCast(method) {
     const input = document.querySelector("[data-cast-question]");
     const question = (input?.value || state.cast.question).trim();
-    if (!question) {
-      const form = document.querySelector("[data-intention-form]");
-      form?.classList.add("is-invalid");
-      const help = document.querySelector("[data-intention-help]");
-      if (help) help.textContent = "请先写下所问之事，再开始起卦。";
-      input?.focus();
-      return;
-    }
     state.cast.question = question;
     state.cast.method = method;
     const now = new Date();
@@ -1158,11 +1146,27 @@ import * as THREE from "./vendor/three.module.js";
   }
 
   function generateReading(manual = false) {
-    if (manual) state.cast.lines = state.cast.manualLines.map(Number);
+    if (state.cast.generating) return;
+    if (manual) {
+      if (!state.cast.manualLines.every((value) => value !== "")) return;
+      state.cast.lines = state.cast.manualLines.map(Number);
+    } else if (state.cast.lines.some((line) => line === null)) {
+      return;
+    }
     saveDraft();
-    state.summaryOpen = true;
+    archiveCompletedCast();
+    state.summaryOpen = false;
+    state.cast.panError = "";
+    state.cast.generating = true;
     render({ preserveScroll: true });
+    document.dispatchEvent(new CustomEvent("guanyao:open-reading"));
   }
+
+  document.addEventListener("guanyao:reading-failed", (event) => {
+    state.cast.generating = false;
+    state.cast.panError = event.detail || "排盘失败，请重试";
+    render({ preserveScroll: true });
+  });
 
   function updateTrend(view) {
     state.trendView = view;
@@ -1275,20 +1279,6 @@ import * as THREE from "./vendor/three.module.js";
     }
     if (action === "generate-reading") generateReading(false);
     if (action === "generate-manual") generateReading(true);
-    if (action === "close-cast-summary") {
-      state.summaryOpen = false;
-      render({ preserveScroll: true });
-    }
-    if (action === "open-full-reading") {
-      archiveCompletedCast();
-      state.summaryOpen = false;
-      state.cast.generating = true;
-      target.disabled = true;
-      window.setTimeout(() => {
-        state.cast.generating = false;
-        location.hash = "/readings/new";
-      }, state.prefs.motion ? 280 : 30);
-    }
     if (action === "trend-view") updateTrend(target.dataset.value);
     if (action === "select-yongshen") {
       state.yongshen = target.dataset.value;
@@ -1356,11 +1346,6 @@ import * as THREE from "./vendor/three.module.js";
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
-      if (state.summaryOpen) {
-        state.summaryOpen = false;
-        render({ preserveScroll: true });
-        return;
-      }
       if (state.manualPicker !== null) {
         state.manualPicker = null;
         render({ preserveScroll: true });

@@ -1,18 +1,9 @@
-import { Fragment } from "react";
+import { Fragment, type KeyboardEvent } from "react";
 
-import { GuaYaoRowView, type GuaYaoRow } from "@/components/result/gua-module";
+import { YaoLine, type GuaYaoRow } from "@/components/result/gua-module";
 import { MovingChangeIndicator } from "@/components/result/moving-column";
 import { zipPanYaoRows, type PanMovingRow } from "@/lib/result-pan-zip";
 import { cn } from "@/lib/utils";
-
-/** 与 `GuaYaoRowView` 主–伏列 `gap-0` 一致，伏神贴主行 */
-const panLiuShouCol = "flex w-9 shrink-0 flex-col gap-0 sm:w-10";
-const panMovingCol = "flex w-12 shrink-0 flex-col gap-0 sm:w-14";
-/** 四列主行同高、下缘微缝，与卦爻主行 `pb-px` 对齐 */
-const panLiuShouMain =
-  "flex min-h-[1.5rem] w-full items-center justify-center pb-px text-xs font-medium text-amber-700";
-const panMovingMain =
-  "flex min-h-[1.5rem] w-full items-center justify-center pb-px";
 
 export type ResultPanGridProps = {
   liushouLabels: string[];
@@ -26,9 +17,56 @@ export type ResultPanGridProps = {
   onBenYaoClick: (yaoPos: number) => void;
 };
 
-/**
- * 整盘 CSS Grid：每爻一行、多列同高，满足 UI.md（避免横排 flex 做整体对齐）。
- */
+function onYaoKeyDown(event: KeyboardEvent, onActivate?: () => void) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    onActivate?.();
+  }
+}
+
+function PanYaoCells({
+  row,
+  interactive,
+  selected,
+  onActivate,
+  rowMain
+}: {
+  row: GuaYaoRow;
+  interactive?: boolean;
+  selected?: boolean;
+  onActivate?: () => void;
+  rowMain: number;
+}) {
+  const fushen = row.fushen?.trim() ?? "";
+  return (
+    <div
+      className={cn(
+        "real-pan-yao",
+        interactive && "real-pan-yao--hit",
+        selected && "is-selected"
+      )}
+      style={{ gridRow: `${rowMain} / span 2` }}
+      {...(interactive
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick: onActivate,
+            onKeyDown: (event: KeyboardEvent) => onYaoKeyDown(event, onActivate)
+          }
+        : {})}
+    >
+      <span className="real-pan-yao__qin">{row.liuqin}</span>
+      <span className="real-pan-yao__zhi">{row.dizhi}</span>
+      <span className="real-pan-yao__gan">{row.gan}</span>
+      <span className="real-pan-yao__line">
+        <YaoLine yang={row.yang} />
+      </span>
+      <span className="real-pan-yao__shi">{row.shiYing}</span>
+      <span className={cn("real-pan-yao__fu", fushen && "has-text")}>{fushen}</span>
+    </div>
+  );
+}
+
 export function ResultPanGrid({
   liushouLabels,
   benName,
@@ -48,81 +86,51 @@ export function ResultPanGrid({
     hasBian
   });
 
-  const gridCols = hasBian
-    ? "grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)]"
-    : "grid-cols-[auto_minmax(0,1fr)]";
-
   return (
-    <div
-      className={cn(
-        "grid w-full min-w-[min(100%,42rem)] gap-y-px gap-x-2 sm:gap-x-3",
-        gridCols
-      )}
-    >
-      <div className="min-h-[2.5rem] w-9 shrink-0 sm:w-10" aria-hidden />
-      <div className="flex min-h-[2.5rem] min-w-0 items-center justify-center px-1 text-center text-sm font-medium text-foreground">
-        {benName}
-      </div>
-      {hasBian && (
-        <>
-          <div className="min-h-[2.5rem] w-12 shrink-0 sm:w-14" aria-hidden />
-          <div className="flex min-h-[2.5rem] min-w-0 items-center justify-center px-1 text-center text-sm font-medium text-foreground">
-            {bianName}
-          </div>
-        </>
-      )}
-
-      {rows.map((r, i) => (
-        <Fragment key={i}>
-          <div className={panLiuShouCol}>
-            <div className={panLiuShouMain}>
-              <span className="max-w-full truncate text-center">
-                {r.liushou}
-              </span>
-            </div>
-            <div className="min-h-[1.125rem] w-full" aria-hidden />
-          </div>
-
-          <div className="min-w-0">
-            <GuaYaoRowView
-              row={r.ben}
-              variant="ben"
-              fushenSlotReserved
-              interactive={r.ben.yaoPos != null}
-              selected={
-                r.ben.yaoPos != null && selectedYao === r.ben.yaoPos
-              }
-              onActivate={
-                r.ben.yaoPos != null
-                  ? () => onBenYaoClick(r.ben.yaoPos!)
-                  : undefined
-              }
-            />
-          </div>
-
-          {hasBian ? (
-            <>
-              <div className={panMovingCol}>
-                <div className={panMovingMain}>
-                  <MovingChangeIndicator
-                    isMoving={r.moving.isMoving}
-                    benguaIsYang={r.moving.benguaIsYang}
-                    showArrow={r.moving.showArrow}
-                  />
-                </div>
-                <div className="min-h-[1.125rem] w-full" aria-hidden />
+    <div className={cn("real-pan-layout", hasBian && "has-bian")}>
+      <div className="real-pan-gua real-pan-gua--ben">
+        <div className="real-pan-gua__name">{benName}</div>
+        {rows.map((row, index) => {
+          const rowMain = index * 2 + 2;
+          return (
+            <Fragment key={`ben-${row.ben.yaoPos ?? index}`}>
+              <div className="real-pan-side real-pan-side--beast" style={{ gridRow: rowMain }}>
+                {row.liushou}
               </div>
-              <div className="min-w-0">
-                <GuaYaoRowView
-                  row={r.bian!}
-                  variant="bian"
-                  fushenSlotReserved
+              <PanYaoCells
+                row={row.ben}
+                interactive={row.ben.yaoPos != null}
+                selected={row.ben.yaoPos != null && selectedYao === row.ben.yaoPos}
+                onActivate={
+                  row.ben.yaoPos != null
+                    ? () => onBenYaoClick(row.ben.yaoPos!)
+                    : undefined
+                }
+                rowMain={rowMain}
+              />
+              <div className="real-pan-side real-pan-side--moving" style={{ gridRow: rowMain }}>
+                <MovingChangeIndicator
+                  isMoving={row.moving.isMoving}
+                  benguaIsYang={row.moving.benguaIsYang}
+                  showArrow={row.moving.showArrow}
                 />
               </div>
-            </>
-          ) : null}
-        </Fragment>
-      ))}
+            </Fragment>
+          );
+        })}
+      </div>
+      {hasBian ? (
+        <div className="real-pan-gua real-pan-gua--bian">
+          <div className="real-pan-gua__name">{bianName}</div>
+          {rows.map((row, index) => (
+            <PanYaoCells
+              key={`bian-${row.bian?.yaoPos ?? index}`}
+              row={row.bian!}
+              rowMain={index * 2 + 2}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -57,13 +57,13 @@ export function GuaYaoRowView({
   const mainRow = (
     <div
       className={cn(
-        "flex min-h-[1.5rem] w-full min-w-0 items-center gap-3 text-xs",
+        "flex w-max min-h-[1.5rem] items-center gap-3 text-xs",
         showFushenBand && "pb-px"
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
-        <span className="truncate text-right font-medium">{row.liuqin}</span>
-        <span className="truncate text-right tabular-nums">{row.dizhi}</span>
+      <div className="flex shrink-0 items-center justify-end gap-1 whitespace-nowrap">
+        <span className="font-medium">{row.liuqin}</span>
+        <span className="tabular-nums">{row.dizhi}</span>
         <span className="shrink-0 text-right tabular-nums text-muted-foreground">
           {row.gan}
         </span>
@@ -78,9 +78,9 @@ export function GuaYaoRowView({
   );
 
   const fushenRowFilled = hasFushen ? (
-    <div className="flex min-h-[1.125rem] w-full min-w-0 items-center gap-3 text-[10px] leading-tight">
-      <div className="flex min-w-0 flex-1 justify-end pr-0.5">
-        <span className="truncate text-right tabular-nums text-red-600">
+    <div className="flex min-h-[1.125rem] w-max items-center gap-3 text-[10px] leading-tight">
+      <div className="flex shrink-0 justify-end pr-0.5">
+        <span className="whitespace-nowrap text-right tabular-nums text-red-600">
           {fushenText}
         </span>
       </div>
@@ -116,7 +116,7 @@ export function GuaYaoRowView({
   return (
     <div
       className={cn(
-        "w-full min-w-0 text-xs",
+        "w-max text-xs",
         textMuted,
         interactive &&
           "cursor-pointer rounded-md border border-transparent px-1 -mx-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",

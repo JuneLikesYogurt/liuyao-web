@@ -37,36 +37,17 @@ export function GuaFeedbackPanel({
   const showYongshenSection = yongshen != null;
 
   return (
-    <FeedbackSlot>
-    <section className="detail-section real-feedback" id="feedback">
-      <div className="detail-section__head">
-        <div>
-          <p className="page-kicker">回看留记</p>
-          <h2 className="section-title">本卦反馈</h2>
-        </div>
-      </div>
-
-      <div className="real-feedback__body">
-        <div className="field-wrap">
-          <label
-            htmlFor="gua-feedback-comment"
-            className="field-label"
-          >
-            反馈记录
-          </label>
-          <textarea
-            id="gua-feedback-comment"
-            value={comment}
-            onChange={(e) => onCommentChange(e.target.value)}
-            rows={4}
-            className="field real-feedback__textarea"
-            placeholder="选填：记录本卦复盘、问题等（全卦一份）"
-          />
-        </div>
-
-        {showYongshenSection && (
-          <div className="real-feedback__yongshen">
+    <>
+      <FeedbackSlot slotId="yongshen-hint-slot">
+        <section className="detail-section real-yongshen-hint" id="yongshen-hint">
+          <div className="detail-section__head">
             <div>
+              <p className="page-kicker">观爻取用</p>
+              <h2 className="section-title">用神提示</h2>
+            </div>
+          </div>
+          {showYongshenSection ? (
+            <div className="real-yongshen-hint__body">
               <p className="real-feedback__current">
                 当前用神：{yaoWeiLabel(yongshen)} · {liuqin ?? "—"}
               </p>
@@ -78,14 +59,13 @@ export function GuaFeedbackPanel({
                   ) : calcError ? (
                     <span className="auth-message--error">{calcError}</span>
                   ) : countValue != null ? (
-                    <strong>
-                      {countValue}
-                    </strong>
+                    <strong>{countValue}</strong>
                   ) : (
                     "—"
                   )}
                 </span>
-                <button className="button button--outline real-feedback__small"
+                <button
+                  className="button button--outline real-feedback__small"
                   type="button"
                   disabled={calcLoading}
                   onClick={onRecalculate}
@@ -94,60 +74,99 @@ export function GuaFeedbackPanel({
                 </button>
               </div>
             </div>
-
+          ) : (
+            <p className="trend-empty">点选本卦某一爻，确认后显示用神计数。</p>
+          )}
+        </section>
+      </FeedbackSlot>
+      <FeedbackSlot slotId="yongshen-feedback-slot">
+        <section className="detail-section real-feedback" id="feedback">
+          <div className="detail-section__head">
             <div>
-              <p className="field-label">是否应验</p>
-              <div className="feedback-choices">
-                <button className="choice"
-                  type="button"
-                  aria-pressed={feedbackCorrect === true}
-                  onClick={() => onFeedbackCorrectChange(true)}
-                >
-                  是
-                </button>
-                <button className="choice"
-                  type="button"
-                  aria-pressed={feedbackCorrect === false}
-                  onClick={() => onFeedbackCorrectChange(false)}
-                >
-                  否
-                </button>
-                <button className="button button--ghost real-feedback__small"
-                  type="button"
-                  disabled={feedbackCorrect === null}
-                  onClick={() => onFeedbackCorrectChange(null)}
-                >
-                  清除
-                </button>
-              </div>
+              <p className="page-kicker">回看留记</p>
+              <h2 className="section-title">本卦反馈</h2>
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="real-feedback__foot">
-        {saveError && (
-          <p className="auth-message auth-message--error">{saveError}</p>
-        )}
-        <button className="button button--ink"
-          type="button"
-          disabled={saving || calcLoading}
-          onClick={() => void onSave()}
-        >
-          {saving ? "保存中…" : "保存反馈"}
-        </button>
-      </div>
-    </section>
-    </FeedbackSlot>
+          <div className="real-feedback__body">
+            <div className="field-wrap">
+              <label htmlFor="gua-feedback-comment" className="field-label">
+                反馈记录
+              </label>
+              <textarea
+                id="gua-feedback-comment"
+                value={comment}
+                onChange={(e) => onCommentChange(e.target.value)}
+                rows={4}
+                className="field real-feedback__textarea"
+                placeholder="选填：记录本卦复盘、问题等（全卦一份）"
+              />
+            </div>
+
+            {showYongshenSection ? (
+              <div>
+                <p className="field-label">是否应验</p>
+                <div className="feedback-choices">
+                  <button
+                    className="choice"
+                    type="button"
+                    aria-pressed={feedbackCorrect === true}
+                    onClick={() => onFeedbackCorrectChange(true)}
+                  >
+                    是
+                  </button>
+                  <button
+                    className="choice"
+                    type="button"
+                    aria-pressed={feedbackCorrect === false}
+                    onClick={() => onFeedbackCorrectChange(false)}
+                  >
+                    否
+                  </button>
+                  <button
+                    className="button button--ghost real-feedback__small"
+                    type="button"
+                    disabled={feedbackCorrect === null}
+                    onClick={() => onFeedbackCorrectChange(null)}
+                  >
+                    清除
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="real-feedback__foot">
+            {saveError ? (
+              <p className="auth-message auth-message--error">{saveError}</p>
+            ) : null}
+            <button
+              className="button button--ink"
+              type="button"
+              disabled={saving || calcLoading}
+              onClick={() => void onSave()}
+            >
+              {saving ? "保存中…" : "保存反馈"}
+            </button>
+          </div>
+        </section>
+      </FeedbackSlot>
+    </>
   );
 }
 
-function FeedbackSlot({ children }: { children: ReactNode }) {
+function FeedbackSlot({
+  slotId,
+  children
+}: {
+  slotId: string;
+  children: ReactNode;
+}) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
-    setSlot(document.getElementById("yongshen-feedback-slot"));
-  }, []);
+    setSlot(document.getElementById(slotId));
+  }, [slotId]);
 
   if (!slot) return null;
   return createPortal(children, slot);

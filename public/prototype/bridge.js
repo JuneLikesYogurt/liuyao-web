@@ -29,7 +29,7 @@ function readCompletedCast() {
     if (!draft || !Array.isArray(draft.lines) || draft.lines.length !== 6) return null;
     if (draft.lines.some((line) => line == null || line === "")) return null;
     return {
-      question: draft.question || "未命名卦例",
+      question: draft.question ?? "",
       dateTime: draft.dateTime || "",
       lines: draft.lines.map(Number)
     };
@@ -60,7 +60,7 @@ async function persistCast() {
       Authorization: `Bearer ${token}`
     },
     body: JSON.stringify({
-      title: reading.question || "未命名卦例",
+      title: reading.question ?? "",
       date: normalizeCastDate(reading.dateTime),
       result: reading.lines.slice().reverse().join("")
     })
@@ -96,38 +96,31 @@ new MutationObserver(updateRealIdentity).observe(document.body, {
 });
 updateRealIdentity();
 
-document.addEventListener("click", (event) => {
-  const anchor = event.target.closest?.("a[href]");
-  const href = anchor?.getAttribute("href");
-  const realPath = href === "#/readings" ? "/history" : href === "#/me" ? "/me" : null;
-  if (realPath) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    top.location.assign(realPath);
-    return;
-  }
-
-  const trigger = event.target.closest?.('[data-action="open-full-reading"]');
-  if (!trigger) return;
-
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  if (trigger.disabled) return;
-
-  const original = trigger.innerHTML;
-  trigger.disabled = true;
-  trigger.textContent = "正在排盘…";
+function startReading() {
+  const trigger = document.querySelector("[data-cast-main-action], [data-manual-submit]");
+  if (trigger) trigger.disabled = true;
 
   void persistCast()
     .then((id) => {
       if (id) top.location.assign(`/result?liuyao_id=${encodeURIComponent(id)}`);
     })
-    .catch((error) => {
+      .catch((error) => {
       console.error(error);
-      trigger.textContent = error instanceof Error ? error.message : "排盘失败，请重试";
-      window.setTimeout(() => {
-        trigger.disabled = false;
-        trigger.innerHTML = original;
-      }, 2400);
+      const message = error instanceof Error ? error.message : "排盘失败，请重试";
+      document.dispatchEvent(new CustomEvent("guanyao:reading-failed", { detail: message }));
     });
+}
+
+document.addEventListener("guanyao:open-reading", () => {
+  startReading();
+});
+
+document.addEventListener("click", (event) => {
+  const anchor = event.target.closest?.("a[href]");
+  const href = anchor?.getAttribute("href");
+  const realPath = href === "#/readings" ? "/history" : href === "#/me" ? "/me" : null;
+  if (!realPath) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  top.location.assign(realPath);
 }, true);

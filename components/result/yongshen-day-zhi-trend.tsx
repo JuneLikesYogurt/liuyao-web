@@ -23,13 +23,14 @@ import {
 
 const Y_MIN = -1;
 const Y_MAX = 1;
-const Y_TICKS = [-1, -0.5, 0, 0.5, 1] as const;
+const Y_TICKS = [-1, -0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5, 1] as const;
 /** 半轴上 0–0.5 所占比例，让靠近零的分数还能拉开。 */
 const Y_INNER_SHARE = 0.72;
-const SVG_W = 588;
-const SVG_H = 196;
-const PAD = { l: 44, r: 28, t: 16, b: 28 };
-const BELOW_ZERO_CLIP = "yongshen-trend-below-zero";
+const SVG_W = 560;
+const SVG_H = 300;
+const PAD = { l: 22, r: 28, t: 36, b: 36 };
+/** 数据线离开纵轴，地支不压在轴线上。 */
+const AXIS_INSET = 18;
 
 type ScrollEdges = { left: boolean; right: boolean };
 
@@ -48,6 +49,12 @@ function yUnit(v: number): number {
 function valueToY(v: number): number {
   const innerH = SVG_H - PAD.t - PAD.b;
   return PAD.t + innerH * (1 - (yUnit(v) + 1) / 2);
+}
+
+function formatTick(tick: number): string {
+  if (Object.is(tick, -0) || tick === 0) return "0";
+  if (Math.abs(tick) === 1) return String(tick);
+  return tick.toFixed(1);
 }
 
 /** 用已有色阶类，近零再开方，避免 144 格都贴在零色上。 */
@@ -249,122 +256,144 @@ function LineChart({
   monthZhi,
   selectedDayIndex,
   benguaDayIndex,
-  onSelectDay
+  onSelectDay,
+  scrollWatch,
+  scrollActive,
+  onScrollEdges
 }: {
   values: number[];
   monthZhi: string;
   selectedDayIndex: number;
   benguaDayIndex: number;
   onSelectDay: (dayIndex: number) => void;
+  scrollWatch: string;
+  scrollActive: boolean;
+  onScrollEdges: (edges: ScrollEdges) => void;
 }) {
+  const plotL = PAD.l + AXIS_INSET;
+  const plotR = SVG_W - PAD.r;
+  const plotW = plotR - plotL;
   const points = useMemo(() => {
-    const innerW = SVG_W - PAD.l - PAD.r;
     return values.map((v, i) => ({
-      x: PAD.l + (innerW * i) / 11,
+      x: plotL + (plotW * i) / 11,
       y: valueToY(v),
       v,
       zhi: DIZHI_12[i] ?? ""
     }));
-  }, [values]);
+  }, [values, plotL, plotW]);
+  const yTop = valueToY(Y_MAX);
+  const yBottom = valueToY(Y_MIN);
   const y0 = valueToY(0);
-  const innerW = SVG_W - PAD.l - PAD.r;
   const polyline = points.map((p) => `${p.x},${p.y}`).join(" ");
-  const area =
-    points.length === 12
-      ? `${points[0].x},${y0} ${polyline} ${points[11].x},${y0}`
-      : "";
 
   return (
-    <div className="chart-wrap">
-      <svg
-        className="line-chart"
-        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        role="img"
-        aria-label={`${monthZhi}月十二日支用神计数折线`}
-      >
-        <defs>
-          <clipPath id={BELOW_ZERO_CLIP}>
-            <rect x="0" y={y0} width={SVG_W} height={SVG_H - y0} />
-          </clipPath>
-        </defs>
-        {Y_TICKS.map((tick) => {
-          const y = valueToY(tick);
-          if (tick === 0) return null;
-          return (
-            <g key={tick}>
-              <line
-                className="chart-grid-line"
-                x1={PAD.l}
-                x2={PAD.l + innerW}
-                y1={y}
-                y2={y}
-              />
-              <text x={PAD.l - 8} y={y + 3} textAnchor="end">
-                {tick}
-              </text>
-            </g>
-          );
-        })}
-        <text x={PAD.l - 8} y={y0 + 3} textAnchor="end" className="chart-zero-label">
-          0
-        </text>
-        <line
-          className="chart-zero"
-          x1={PAD.l}
-          x2={PAD.l + innerW}
-          y1={y0}
-          y2={y0}
-        />
-        {area ? (
-          <polygon
-            className="chart-area"
-            points={area}
-            clipPath={`url(#${BELOW_ZERO_CLIP})`}
-          />
-        ) : null}
-        <polyline className="chart-path" points={polyline} />
-        {points.map((p, i) => {
-          const isBengua = i === benguaDayIndex;
-          const isSelected = i === selectedDayIndex;
-          return (
-            <g key={p.zhi}>
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={12}
-                tabIndex={0}
-                role="button"
-                aria-label={`${p.zhi} ${formatCount(p.v)}${isBengua ? "，本卦日支" : ""}`}
-                aria-pressed={isSelected}
-                className="chart-hit"
-                onClick={() => onSelectDay(i)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    onSelectDay(i);
+    <div className="chart-frame">
+      <ol className="chart-y-axis" aria-label="纵轴">
+        {[...Y_TICKS].reverse().map((tick) => (
+          <li
+            key={tick}
+            className={
+              tick === 0
+                ? "is-zero"
+                : Math.abs(tick) === 1 || Math.abs(tick) === 0.5
+                  ? "is-mark"
+                  : "is-tenth"
+            }
+            style={{ top: `${(valueToY(tick) / SVG_H) * 100}%` }}
+          >
+            {formatTick(tick)}
+          </li>
+        ))}
+      </ol>
+      <div className="chart-plot">
+        <TrendScroll watch={scrollWatch} active={scrollActive} onEdges={onScrollEdges}>
+          <svg
+            className="line-chart"
+            viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+            role="img"
+            aria-label={`${monthZhi}月十二日支用神计数折线`}
+          >
+            <line
+              className="chart-axis"
+              x1={PAD.l}
+              x2={PAD.l}
+              y1={yTop}
+              y2={yBottom}
+            />
+            {Y_TICKS.map((tick) => {
+              if (tick === 0) return null;
+              const y = valueToY(tick);
+              const endTick = Math.abs(tick) === 1;
+              return (
+                <line
+                  key={tick}
+                  className={
+                    endTick
+                      ? "chart-grid-line"
+                      : "chart-grid-line chart-grid-line--minor"
                   }
-                }}
-              />
-              <circle
-                className={
-                  isBengua
-                    ? "chart-point is-bengua"
-                    : isSelected
-                      ? "chart-point is-selected"
-                      : "chart-point"
-                }
-                cx={p.x}
-                cy={p.y}
-                r={3.5}
-                pointerEvents="none"
-              />
-              <text x={p.x} y={SVG_H - 8} textAnchor="middle">
-                {p.zhi}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+                  x1={PAD.l}
+                  x2={plotR}
+                  y1={y}
+                  y2={y}
+                />
+              );
+            })}
+            <line
+              className="chart-zero"
+              x1={PAD.l}
+              x2={plotR}
+              y1={y0}
+              y2={y0}
+            />
+            <polyline className="chart-path" points={polyline} />
+            {points.map((p, i) => {
+              const isBengua = i === benguaDayIndex;
+              const isSelected = i === selectedDayIndex;
+              return (
+                <g key={p.zhi}>
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={12}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${p.zhi} ${formatCount(p.v)}${isBengua ? "，本卦日支" : ""}`}
+                    aria-pressed={isSelected}
+                    className="chart-hit"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onSelectDay(i)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        onSelectDay(i);
+                      }
+                    }}
+                  />
+                  {isSelected ? (
+                    <>
+                      <circle className="chart-focus" cx={p.x} cy={p.y} r={5.5} />
+                      <circle className="chart-focus chart-focus--outer" cx={p.x} cy={p.y} r={8.5} />
+                    </>
+                  ) : null}
+                  <circle
+                    className={
+                      isBengua ? "chart-point is-bengua" : "chart-point"
+                    }
+                    cx={p.x}
+                    cy={p.y}
+                    r={2.1}
+                    pointerEvents="none"
+                  />
+                  <text x={p.x} y={SVG_H - 12} textAnchor="middle" fontSize="11">
+                    {p.zhi}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </TrendScroll>
+      </div>
     </div>
   );
 }
@@ -372,7 +401,7 @@ function LineChart({
 export function YongshenDayZhiTrend({ liuyaoId }: { liuyaoId: string }) {
   const { selection } = useYongshenTrendSelection();
   const { yao, countValue, calcLoading } = selection;
-  const [view, setView] = useState<"heat" | "chart">("heat");
+  const [view, setView] = useState<"heat" | "chart">("chart");
   const [payload, setPayload] = useState<CountYongshenGridResult | null>(null);
   const [payloadKey, setPayloadKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -462,18 +491,18 @@ export function YongshenDayZhiTrend({ liuyaoId }: { liuyaoId: string }) {
             <button
               className="segmented__item"
               type="button"
-              aria-pressed={view === "heat"}
-              onClick={() => setView("heat")}
-            >
-              热力图
-            </button>
-            <button
-              className="segmented__item"
-              type="button"
               aria-pressed={view === "chart"}
               onClick={() => setView("chart")}
             >
               折线图
+            </button>
+            <button
+              className="segmented__item"
+              type="button"
+              aria-pressed={view === "heat"}
+              onClick={() => setView("heat")}
+            >
+              热力图
             </button>
           </div>
         ) : null}
@@ -497,7 +526,23 @@ export function YongshenDayZhiTrend({ liuyaoId }: { liuyaoId: string }) {
                 .filter(Boolean)
                 .join(" ")}
             >
-              <div className={view === "chart" ? "trend-track is-chart" : "trend-track"}>
+              <div className={view === "heat" ? "trend-track is-heat" : "trend-track"}>
+                <div className="trend-panel">
+                  <LineChart
+                    values={lineValues}
+                    monthZhi={selectedMonthZhi}
+                    selectedDayIndex={selectedDayIndex}
+                    benguaDayIndex={
+                      selectedMonthIndex === currentMonthIndex
+                        ? currentDayIndex
+                        : -1
+                    }
+                    onSelectDay={setSelectedDayIndex}
+                    scrollWatch={`chart-${selectedMonthIndex}`}
+                    scrollActive={view === "chart"}
+                    onScrollEdges={onEdges}
+                  />
+                </div>
                 <div className="trend-panel">
                   <TrendScroll watch="heat" active={view === "heat"} onEdges={onEdges}>
                     <Heatmap
@@ -523,30 +568,11 @@ export function YongshenDayZhiTrend({ liuyaoId }: { liuyaoId: string }) {
                     <span>增强</span>
                   </div>
                 </div>
-                <div className="trend-panel">
-                  <TrendScroll
-                    watch={`chart-${selectedMonthIndex}`}
-                    active={view === "chart"}
-                    onEdges={onEdges}
-                  >
-                    <LineChart
-                      values={lineValues}
-                      monthZhi={selectedMonthZhi}
-                      selectedDayIndex={selectedDayIndex}
-                      benguaDayIndex={
-                        selectedMonthIndex === currentMonthIndex
-                          ? currentDayIndex
-                          : -1
-                      }
-                      onSelectDay={setSelectedDayIndex}
-                    />
-                  </TrendScroll>
-                </div>
               </div>
             </div>
             <div className="trend-position" aria-hidden="true">
-              <i className={view === "heat" ? "is-current" : undefined} />
               <i className={view === "chart" ? "is-current" : undefined} />
+              <i className={view === "heat" ? "is-current" : undefined} />
             </div>
           </div>
           <p className="trend-caption">

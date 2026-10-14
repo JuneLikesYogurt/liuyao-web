@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { GuaFeedbackPanel } from "@/components/result/gua-feedback-panel";
 import type { GuaYaoRow } from "@/components/result/gua-module";
@@ -142,7 +143,7 @@ export function BenGuaYongShenClient({
 
   const handleConfirmCancel = () => {
     setConfirmOpen(false);
-    setSelectedYao(null);
+    setSelectedYao(outcomeYao);
   };
 
   const handleConfirmOk = async () => {
@@ -196,10 +197,6 @@ export function BenGuaYongShenClient({
         className="real-pan__sheet"
         data-liuyao-id={liuyaoId}
       >
-        <p className="real-pan__hint">
-          点选<strong>本卦</strong>
-          某一爻作为用神；已算过的爻可直接回显，未算过的需确认后计算。右侧可填写应验与反馈。
-        </p>
         <ResultPanGrid
           liushouLabels={liushouLabels}
           benName={benName}
@@ -229,8 +226,8 @@ export function BenGuaYongShenClient({
         onSave={handleSaveFeedback}
       />
 
-      {confirmOpen && selectedYao != null && (
-        <div className="ritual-dialog-layer" onClick={handleConfirmCancel}>
+      {confirmOpen && selectedYao != null ? (
+        <ConfirmLayer onCancel={handleConfirmCancel}>
           <section
             className="ritual-dialog real-confirm-dialog"
             role="dialog"
@@ -248,7 +245,8 @@ export function BenGuaYongShenClient({
               <button className="button button--ghost" type="button" onClick={handleConfirmCancel}>
                 取消
               </button>
-              <button className="button button--ink"
+              <button
+                className="button button--ink"
                 type="button"
                 disabled={calcLoading}
                 onClick={() => void handleConfirmOk()}
@@ -257,8 +255,30 @@ export function BenGuaYongShenClient({
               </button>
             </div>
           </section>
-        </div>
-      )}
+        </ConfirmLayer>
+      ) : null}
     </>
+  );
+}
+
+function ConfirmLayer({
+  onCancel,
+  children
+}: {
+  onCancel: () => void;
+  children: ReactNode;
+}) {
+  const [mounted, setMounted] = useState(false);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  return createPortal(
+    <div className="ritual-dialog-layer" onClick={onCancel}>
+      {children}
+    </div>,
+    document.body
   );
 }
