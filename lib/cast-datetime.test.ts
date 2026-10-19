@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   datetimeLocalToCastString,
   formatCastDateTime,
+  formatDisplayDateTime,
   isValidManualCastDatetimeLocal,
   parseCastDateTime
 } from "./cast-datetime";
@@ -19,6 +20,17 @@ describe("cast-datetime", () => {
     const s = formatCastDateTime(d);
     expect(s).toBe("2024-06-15 14:30:45");
     expect(parseCastDateTime(s)?.getTime()).toBe(d.getTime());
+  });
+
+  it("shows UTC ISO as Shanghai wall clock and keeps formatted strings", () => {
+    expect(formatDisplayDateTime("2026-10-19T06:46:00.000+00:00")).toBe(
+      "2026-10-19 14:46:00"
+    );
+    expect(formatDisplayDateTime("2024-06-15 14:30:45")).toBe(
+      "2024-06-15 14:30:45"
+    );
+    expect(formatDisplayDateTime(null)).toBe("—");
+    expect(formatDisplayDateTime("not-a-date")).toBe("not-a-date");
   });
 
   it("rejects future manual datetime beyond grace", () => {

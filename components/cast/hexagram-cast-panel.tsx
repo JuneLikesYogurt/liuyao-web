@@ -10,7 +10,6 @@ import { LiuYao, type LiuYaoLine } from "@/components/liuyao";
 import { Button } from "@/components/ui/button";
 import {
   dateToDatetimeLocalValue,
-  datetimeLocalToCastString,
   formatCastDateTime,
   isValidManualCastDatetimeLocal
 } from "@/lib/cast-datetime";
@@ -221,17 +220,12 @@ export function HexagramCastPanel({
     const result = linesToResultString(lines);
     if (!result) return;
 
-    const date =
-      castMethod === "manual"
-        ? datetimeLocalToCastString(manualDatetimeLocal)
-        : formatCastDateTime(new Date());
-    if (!date) return;
+    const date = formatCastDateTime(new Date());
 
     await onSubmit({ result, date });
   }, [
     canSubmit,
     castMethod,
-    manualDatetimeLocal,
     manualLines,
     onRequireAuth,
     onSubmit,

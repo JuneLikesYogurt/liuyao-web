@@ -38,10 +38,10 @@ function readCompletedCast() {
   }
 }
 
-function normalizeCastDate(value) {
-  const raw = String(value || "").trim().replace("T", " ");
-  if (!raw) return "";
-  return raw.length === 16 ? `${raw}:00` : raw;
+function currentCastDate() {
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 }
 
 async function persistCast() {
@@ -61,7 +61,7 @@ async function persistCast() {
     },
     body: JSON.stringify({
       title: reading.question ?? "",
-      date: normalizeCastDate(reading.dateTime),
+      date: currentCastDate(),
       result: reading.lines.slice().reverse().join("")
     })
   });

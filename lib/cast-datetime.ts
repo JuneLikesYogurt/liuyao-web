@@ -37,6 +37,31 @@ export function isCastDateTimeString(s: string): boolean {
   return parseCastDateTime(s) !== null;
 }
 
+/**
+ * 结果页在服务端渲染。接口里的 Date 常是 UTC ISO，按东八区墙钟显示，
+ * 不跟运行机器的时区走。已经是 `yyyy-MM-dd HH:mm:ss` 的字符串原样返回。
+ */
+export function formatDisplayDateTime(value: string | null | undefined): string {
+  if (!value?.trim()) return "—";
+  const trimmed = value.trim();
+  if (isCastDateTimeString(trimmed)) return trimmed;
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return trimmed;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(d);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${pick("year")}-${pick("month")}-${pick("day")} ${pick("hour")}:${pick("minute")}:${pick("second")}`;
+}
+
 /** 可解析且不过晚于当前时刻（容差 1 分钟） */
 export function isValidManualCastDatetimeLocal(value: string): boolean {
   const castStr = datetimeLocalToCastString(value);

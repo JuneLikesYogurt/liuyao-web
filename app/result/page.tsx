@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BenGuaDetailContent } from "@/components/result/ben-gua-detail";
 import { YongshenDayZhiTrend } from "@/components/result/yongshen-day-zhi-trend";
 import { YongshenTrendProvider } from "@/components/result/yongshen-trend-context";
+import { formatDisplayDateTime } from "@/lib/cast-datetime";
 import { getLiuYaoDetail } from "@/lib/get-liuyao-detail";
 
 interface ResultPageProps {
@@ -42,7 +43,7 @@ async function ResultPage({ searchParams }: ResultPageProps) {
       <YongshenTrendProvider>
       <div className="detail-grid">
         <aside className="reading-board" aria-label="排盘结果">
-          <div className="reading-board__title"><div className="reading-board__folio"><span>六爻排盘</span><i>真实卦例</i></div>{detail.title?.trim() ? <h1 className="reading-board__question">{detail.title}</h1> : null}<div className="reading-board__meta"><span>{detail.date ?? "—"}</span></div></div>
+          <div className="reading-board__title"><div className="reading-board__folio"><span>六爻排盘</span><i>真实卦例</i></div>{detail.title?.trim() ? <h1 className="reading-board__question">{detail.title}</h1> : null}<div className="reading-board__meta"><span>{formatDisplayDateTime(detail.date)}</span></div></div>
           <div className="pillars">{[["年柱", detail.year],["月柱", detail.month],["日柱", detail.day],["时柱", detail.hour],["旬空", detail.xunkong]].map(([label, value]) => <div className="pillar-cell" key={label}><strong>{value ?? "—"}</strong><small>{label}</small></div>)}</div>
           <div className="real-pan" id="pan">
           {detail.bengua ? (
