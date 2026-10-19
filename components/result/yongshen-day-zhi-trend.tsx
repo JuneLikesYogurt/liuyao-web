@@ -370,10 +370,13 @@ function LineChart({
                       }
                     }}
                   />
+                  {isBengua ? (
+                    <circle className="chart-bengua-ring" cx={p.x} cy={p.y} r={6.5} />
+                  ) : null}
                   {isSelected ? (
                     <>
-                      <circle className="chart-focus" cx={p.x} cy={p.y} r={5.5} />
-                      <circle className="chart-focus chart-focus--outer" cx={p.x} cy={p.y} r={8.5} />
+                      <circle className="chart-focus" cx={p.x} cy={p.y} r={6} />
+                      <circle className="chart-focus chart-focus--outer" cx={p.x} cy={p.y} r={9.5} />
                     </>
                   ) : null}
                   <circle
@@ -382,10 +385,18 @@ function LineChart({
                     }
                     cx={p.x}
                     cy={p.y}
-                    r={2.1}
+                    r={isBengua ? 3.6 : 2.1}
                     pointerEvents="none"
                   />
-                  <text x={p.x} y={SVG_H - 12} textAnchor="middle" fontSize="11">
+                  <text
+                    className={
+                      isBengua ? "is-bengua" : isSelected ? "is-selected" : undefined
+                    }
+                    x={p.x}
+                    y={SVG_H - 12}
+                    textAnchor="middle"
+                    fontSize="11"
+                  >
                     {p.zhi}
                   </text>
                 </g>
