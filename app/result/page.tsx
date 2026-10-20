@@ -39,11 +39,11 @@ async function ResultPage({ searchParams }: ResultPageProps) {
 
   return (
     <div className="page detail-page real-detail-page">
-      <nav className="detail-index" aria-label="卦例页内导航"><div className="detail-index__inner"><a className="detail-index__link" href="#pan" aria-current="true">六爻排盘</a><a className="detail-index__link" href="#yongshen-hint">用神提示</a><a className="detail-index__link" href="#trend">日月趋势</a><a className="detail-index__link" href="#feedback">本卦反馈</a></div></nav>
+      <nav className="detail-index" aria-label="卦例页内导航"><div className="detail-index__inner"><a className="detail-index__link" href="#pan" aria-current="true">六爻纳甲</a><a className="detail-index__link" href="#yongshen-hint">用神提示</a><a className="detail-index__link" href="#trend">日月趋势</a><a className="detail-index__link" href="#feedback">本卦反馈</a></div></nav>
       <YongshenTrendProvider>
       <div className="detail-grid">
         <aside className="reading-board" aria-label="排盘结果">
-          <div className="reading-board__title"><div className="reading-board__folio"><span>六爻排盘</span><i>真实卦例</i></div>{detail.title?.trim() ? <h1 className="reading-board__question">{detail.title}</h1> : null}<div className="reading-board__meta"><span>{formatDisplayDateTime(detail.date)}</span></div></div>
+          <div className="reading-board__title"><div className="reading-board__folio"><span>六爻纳甲</span><i>真实卦例</i></div>{detail.title?.trim() ? <h1 className="reading-board__question">{detail.title}</h1> : null}<div className="reading-board__meta"><span>{formatDisplayDateTime(detail.date)}</span></div></div>
           <div className="pillars">{[["年柱", detail.year],["月柱", detail.month],["日柱", detail.day],["时柱", detail.hour],["旬空", detail.xunkong]].map(([label, value]) => <div className="pillar-cell" key={label}><strong>{value ?? "—"}</strong><small>{label}</small></div>)}</div>
           <div className="real-pan" id="pan">
           {detail.bengua ? (

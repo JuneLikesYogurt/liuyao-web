@@ -401,7 +401,7 @@ function HistoryListViewInner({
                 const owner = showOwnerMeta
                   ? row.username || (row.user_id != null ? `用户 ${row.user_id}` : "—")
                   : id != null ? `编号 ${id}` : "—";
-                const inner = <><span className="record-number">{String(idx + 1).padStart(2, "0")}</span><div className="record-question"><strong>{row.title?.trim() || "（无标题）"}</strong><span>{id != null ? `卦例 · ${id}` : "待补全"}</span></div><span className="record-cell">{formatDisplayDateTime(row.date)}</span><span className="record-cell record-cell--method">六爻排盘</span><span className="record-cell record-cell--status">{owner}</span><span className="record-arrow">→</span></>;
+                const inner = <><span className="record-number">{String(idx + 1).padStart(2, "0")}</span><div className="record-question"><strong>{row.title?.trim() || "（无标题）"}</strong><span>{id != null ? `卦例 · ${id}` : "待补全"}</span></div><span className="record-cell">{formatDisplayDateTime(row.date)}</span><span className="record-cell record-cell--method">六爻纳甲</span><span className="record-cell record-cell--status">{owner}</span><span className="record-arrow">→</span></>;
 
                 return href ? (
                   <Link

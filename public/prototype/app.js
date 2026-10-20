@@ -413,13 +413,7 @@ import * as THREE from "./vendor/three.module.js";
     }
   }
 
-  const records = [
-    { id: "demo", question: "今年下半年的项目推进是否顺利？", hex: "水雷屯 → 地雷复", date: "2026-09-17 10:28", method: "铜钱摇卦", status: "待反馈" },
-    { id: "career", question: "近期工作方向应当如何取舍？", hex: "风山渐 → 风火家人", date: "2026-09-12 21:16", method: "手动录入", status: "已反馈" },
-    { id: "journey", question: "十月出行计划是否适宜？", hex: "泽水困 → 雷水解", date: "2026-09-02 08:42", method: "铜钱摇卦", status: "未反馈" },
-    { id: "study", question: "本阶段学习安排如何调整？", hex: "山水蒙 → 山风蛊", date: "2026-08-26 19:05", method: "铜钱摇卦", status: "已反馈" },
-    { id: "cooperate", question: "这次合作能否按计划落地？", hex: "火泽睽 → 天泽履", date: "2026-08-18 14:33", method: "手动录入", status: "待反馈" },
-  ];
+  const records = [];
 
   const lineNames = ["初爻", "二爻", "三爻", "四爻", "五爻", "上爻"];
   const beasts = ["青龙", "朱雀", "勾陈", "腾蛇", "白虎", "玄武"];
@@ -538,7 +532,7 @@ import * as THREE from "./vendor/three.module.js";
           <div class="top-nav__inner">
             <a class="brand" href="#/cast" data-action="enter-cast" aria-label="三钱六掷首页">
               ${logoMark()}
-              <span class="brand__text"><span class="brand__name">三钱六掷</span><span class="brand__desc">六爻排盘</span></span>
+              <span class="brand__text"><span class="brand__name">三钱六掷</span><span class="brand__desc">六爻纳甲</span></span>
             </a>
             <nav class="top-nav__links" aria-label="一级导航">
               ${navLink("cast", "起卦", active)}
@@ -692,7 +686,7 @@ import * as THREE from "./vendor/three.module.js";
       <section class="intention" aria-labelledby="cast-entry-title">
         <div class="intention__brand">${logoMark(`brand-mark--ritual ${animateLogo}`)}<p class="page-kicker">三枚钱 · 六次掷</p><h1 class="intention__title" id="cast-entry-title"><span>三钱</span><span>六掷</span></h1><p class="intention__subtitle">心有所问，掷钱成卦</p></div>
         <div class="intention__form" data-intention-form>${resume}
-          <label class="intention__field" for="question"><span class="intention__field-label"><b>所问之事</b><small>限八十字</small></span><textarea id="question" data-cast-question maxlength="80" rows="2" placeholder="例如：这次合作能否在十月顺利落地？">${escapeHTML(state.cast.question)}</textarea></label>
+          <label class="intention__field" for="question"><span class="intention__field-label"><b>所问之事</b><small>限八十字</small></span><textarea id="question" data-cast-question maxlength="80" rows="2">${escapeHTML(state.cast.question)}</textarea></label>
           <p class="intention__help" data-intention-help>一卦一事，问题具体更便于日后回看。</p>
           <div class="intention__actions">
             <button class="button button--gold intention__primary" type="button" data-action="begin-cast">${icon("coins")}开始起卦</button>
@@ -724,7 +718,7 @@ import * as THREE from "./vendor/three.module.js";
 
   function readingBoard(id) {
     const newest = currentReading();
-    const question = id === "new" ? newest.question : (records.find((item) => item.id === id)?.question || records[0].question);
+    const question = id === "new" ? newest.question : (records.find((item) => item.id === id)?.question || "");
     const lines = id === "new" ? newest.lines : demoBen;
     const boardRows = [...lineNames].reverse().map((_, reversedIndex) => {
       const index = 5 - reversedIndex;
@@ -737,7 +731,7 @@ import * as THREE from "./vendor/three.module.js";
       </div>`;
     }).join("");
     return `<aside class="reading-board" aria-label="排盘结果">
-      <div class="reading-board__title"><div class="reading-board__folio"><span>六爻排盘</span><i>占位结果</i></div><h2 class="reading-board__question">${escapeHTML(question)}</h2><div class="reading-board__meta"><span>${icon("calendar")} 2026-09-17</span><span>${icon("clock")} 10:28</span><span>农历 八月初七</span></div></div>
+      <div class="reading-board__title"><div class="reading-board__folio"><span>六爻纳甲</span><i>占位结果</i></div><h2 class="reading-board__question">${escapeHTML(question)}</h2><div class="reading-board__meta"><span>${icon("calendar")} 2026-09-17</span><span>${icon("clock")} 10:28</span><span>农历 八月初七</span></div></div>
       <div class="pillars"><div class="pillar-cell pillar-cell--label">四柱</div><div class="pillar-cell"><strong>丙午</strong><small>年柱</small></div><div class="pillar-cell"><strong>丁酉</strong><small>月柱</small></div><div class="pillar-cell"><strong>壬辰</strong><small>日柱</small></div><div class="pillar-cell"><strong>乙巳</strong><small>时柱</small></div></div>
       <div class="reading-board__scroll"><div class="board-head"><span></span><div class="board-head__hex"><strong>水雷屯</strong><span>坎宫 · 二世</span></div><div class="board-head__hex"><strong>地雷复</strong><span>坤宫 · 一世</span></div></div><div class="board-lines">${boardRows}</div></div>
       <div class="board-foot"><span>旬空：午未</span><span>世：二爻 · 应：五爻</span><span>动爻：上爻</span></div>
@@ -768,7 +762,7 @@ import * as THREE from "./vendor/three.module.js";
 
   function detailPage(id) {
     const newest = currentReading();
-    const question = id === "new" ? newest.question : (records.find((item) => item.id === id)?.question || records[0].question);
+    const question = id === "new" ? newest.question : (records.find((item) => item.id === id)?.question || "");
     const lines = id === "new" ? newest.lines : demoBen;
     const moving = lines.map((value, index) => lineTypes[value].moving ? lineNames[index] : "").filter(Boolean);
     const primaryHex = [...lines].reverse().map((value) => renderYaoSymbol(value)).join("");
@@ -783,18 +777,13 @@ import * as THREE from "./vendor/three.module.js";
             <div class="moving-note"><span>动爻</span><strong>${moving.length ? moving.join("、") : "无动爻"}</strong><p>动而有变，先观本卦之势，再看变卦所归。</p></div>
           </section>
           <section class="detail-section" id="analysis" data-detail-section><div class="detail-section__head"><div><p class="page-kicker">卦意解读</p><h2 class="section-title">由象入意</h2></div><span class="section-stamp">排盘已完成</span></div>
-            <p class="content-lead">此处为首版界面占位解读。主卦水雷屯，象征事物初生阶段秩序未定；变卦地雷复，提示回到关键基础、逐步恢复节奏。</p>
-            <div class="analysis-note"><strong>阅读提示：</strong> 专业断卦内容将在后续接入真实数据。当前文案只用于验证信息层级、阅读密度与响应式排版。</div>
             <div class="subsection"><h3>用神与关系</h3><p>选择不同用神，可在此更新六亲关系、高亮爻位和对应分析。</p><div class="yongshen-picker" role="group" aria-label="用神选择">${["妻财", "官鬼", "父母", "子孙", "兄弟"].map((name) => `<button class="pill pill--button" data-action="select-yongshen" data-value="${name}" aria-pressed="${state.yongshen === name}">${name}</button>`).join("")}</div><div class="relation-grid"><div class="relation-item"><span>当前用神</span><strong data-yongshen-label>${state.yongshen} · 辰土</strong></div><div class="relation-item"><span>世应关系</span><strong>世克应 · 占位</strong></div><div class="relation-item"><span>旺衰状态</span><strong>得月扶 · 占位</strong></div></div></div>
-            <div class="subsection"><h3>核心判断</h3><p>前期容易出现方向反复或协同成本，重点不在快速扩张，而在厘清次序、回到可验证的小步推进。此区域后续可接入正式术语和详细论证。</p></div>
           </section>
           <section class="detail-section" id="trend" data-detail-section><div class="detail-section__head trend-section-head"><div><p class="page-kicker">时势</p><h2 class="section-title">日月地支趋势</h2></div><div class="segmented" role="group" aria-label="趋势视图"><button class="segmented__item" data-action="trend-view" data-value="heat" aria-pressed="true">${icon("grid")}热力图</button><button class="segmented__item" data-action="trend-view" data-value="chart" aria-pressed="false">${icon("chart")}折线图</button></div></div>
             <div class="trend-shell"><div class="trend-viewport"><div class="trend-track"><div class="trend-panel">${heatmap()}</div><div class="trend-panel">${lineChart()}</div></div></div><div class="trend-position" aria-hidden="true"><i class="is-current"></i><i></i></div></div>
-            <div class="trend-summary"><div class="trend-summary__item"><span>近期</span><strong>先缓后稳 · 占位</strong></div><div class="trend-summary__item"><span>转折</span><strong>申酉月 · 占位</strong></div><div class="trend-summary__item"><span>提示</span><strong>以稳为先 · 占位</strong></div></div>
           </section>
           <section class="detail-section" id="feedback" data-detail-section><div class="detail-section__head"><div><p class="page-kicker">事后记</p><h2 class="section-title">反馈与回看</h2><p class="section-subtitle">反馈与起卦分析分开记录，方便未来回看。</p></div></div>
-            <p>这次分析对你后续验证是否有帮助？</p><div class="feedback-choices" role="group" aria-label="反馈选择"><button class="choice" data-action="feedback-choice" data-value="helpful" aria-pressed="false">${icon("thumbsUp")}有帮助</button><button class="choice" data-action="feedback-choice" data-value="unhelpful" aria-pressed="false">${icon("thumbsDown")}不太符合</button></div>
-            <label class="field-wrap"><span class="field-label">补充记录（可选）</span><textarea class="field" id="feedback-text" placeholder="事情后来如何发展？写下关键节点，便于未来复盘。"></textarea></label><div class="feedback-actions"><button class="button" type="button" data-action="save-feedback">${icon("check")}保存反馈</button></div>
+            <label class="field-wrap"><span class="field-label">补充记录（可选）</span><textarea class="field" id="feedback-text"></textarea></label><div class="feedback-actions"><button class="button" type="button" data-action="save-feedback">${icon("check")}保存反馈</button></div>
           </section>
         </article>
       </div>

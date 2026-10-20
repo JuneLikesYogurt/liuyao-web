@@ -12,7 +12,7 @@ import {
 } from "@/lib/auth-cookie";
 
 export const metadata: Metadata = {
-  title: "三钱六掷 · 六爻排盘",
+  title: "三钱六掷 · 六爻纳甲",
   description: "心有所问，掷钱成卦"
 };
 
@@ -37,7 +37,7 @@ async function RootLayout({ children }: { children: React.ReactNode }) {
                 <BrandMark />
                 <span className="brand__text">
                   <span className="brand__name">三钱六掷</span>
-                  <span className="brand__desc">六爻排盘</span>
+                  <span className="brand__desc">六爻纳甲</span>
                 </span>
               </a>
               <SiteNav isAdmin={isAdmin} />
